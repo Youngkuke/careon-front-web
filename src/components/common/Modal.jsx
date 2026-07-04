@@ -1,11 +1,11 @@
 import { Button } from './Button'
 
-export function Modal({ open, title, children, primaryLabel, secondaryLabel, onPrimary, onSecondary }) {
+export function Modal({ open, title, children, primaryLabel, secondaryLabel, onPrimary, onSecondary, className = '' }) {
   if (!open) return null
 
   return (
     <div className="modal-backdrop" role="presentation">
-      <section className="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <section className={`modal ${className}`} role="dialog" aria-modal="true" aria-labelledby="modal-title">
         <h2 id="modal-title">{title}</h2>
         <div className="modal__body">{children}</div>
         <div className="modal__actions">

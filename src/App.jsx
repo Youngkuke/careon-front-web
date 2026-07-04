@@ -51,6 +51,7 @@ function App() {
   const [activeProgramId, setActiveProgramId] = useState(null)
   const [installPromptCount, setInstallPromptCount] = useState(0)
   const [showInstallModal, setShowInstallModal] = useState(false)
+  const [showSideChat, setShowSideChat] = useState(true)
 
   const eligible = REQUIRED_DIAGNOSIS_IDS.every((id) => answers[id] === true)
   const activeProgram = MOCK_PROGRAMS.find((program) => program.id === activeProgramId)
@@ -65,7 +66,7 @@ function App() {
 
     const timer = window.setTimeout(() => {
       setView('result')
-    }, 3000)
+    }, 2000)
 
     return () => window.clearTimeout(timer)
   }, [view])
@@ -205,6 +206,7 @@ function App() {
           selectedTypes={selectedTypes}
           savedProgramIds={savedProgramIds}
           user={user}
+          showSideChat={showSideChat}
           onOpenProgram={(programId) => {
             setActiveProgramId(programId)
             navigate('detail')
@@ -248,18 +250,27 @@ function App() {
   }
 
   return (
-    <PageShell currentView={view} user={user} onNavigate={navigate} onLogout={handleLogout}>
+    <PageShell
+      currentView={view}
+      user={user}
+      showSideChat={showSideChat}
+      onToggleSideChat={() => setShowSideChat((current) => !current)}
+      onNavigate={navigate}
+      onLogout={handleLogout}
+    >
       {renderView()}
       <Modal
         open={showInstallModal}
-        title="앱에서 마감일 알림을 받을 수 있어요"
+        title="마감일 알림은 CareOn 앱에서 받을 수 있어요"
         primaryLabel="설치했어요"
         secondaryLabel="나중에 할게요"
+        className="install-modal"
         onPrimary={() => setShowInstallModal(false)}
         onSecondary={() => setShowInstallModal(false)}
       >
         <p>
-          웹에서는 제도 확인까지 빠르게 돕고, 앱에서는 저장한 제도의 마감일과 서류 준비 알림을 이어서 받을 수 있습니다.
+          지금 설치하면 신청 마감일이 다가올 때<br />
+          놓치지 않도록 알려드려요
         </p>
       </Modal>
     </PageShell>

@@ -11,11 +11,11 @@
   --primary-soft: #e8fff6;
   --accent: #f2a94b;
   --danger: #b94a48;
-  --shadow: 0 20px 60px rgba(33, 60, 48, 0.12);
-  --radius: 8px;
+  --shadow: 0 1.25rem 3.75rem rgba(33, 60, 48, 0.12);
+  --radius: 0.5rem;
   --sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
-  font: 16px/1.5 var(--sans);
+  font: 1rem/1.5 var(--sans);
   color: var(--text);
   background: var(--bg);
   font-synthesis: none;

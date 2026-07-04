@@ -11,6 +11,7 @@ export function ProgramListPage({
   selectedTypes,
   savedProgramIds,
   user,
+  showSideChat,
   onOpenProgram,
 }) {
   const [query, setQuery] = useState('')
@@ -44,9 +45,7 @@ export function ProgramListPage({
     <section className="programs-page">
       <div className="programs-main">
         <div className="page-heading">
-          <span className="eyebrow">추천 제도</span>
-          <h1>{user ? `${user.name}님에게 맞춘 제도` : '선택 유형 기반 제도'}</h1>
-          <p>관심 유형별로 묶어 보고, 검색과 모집 상태 필터로 더 좁혀볼 수 있습니다.</p>
+          <h1>{user ? `${user.name}님의 맞춤 제도` : '맞춤 제도'}</h1>
         </div>
 
         <section className={`selected-programs ${savedPrograms.length ? 'has-items' : 'is-empty'}`}>
@@ -118,7 +117,9 @@ export function ProgramListPage({
           </div>
         )}
       </div>
-      <SideChatPanel userName={user?.name} selectedTypes={selectedTypes} />
+      <div className={`side-chat-slot ${showSideChat ? '' : 'is-hidden'}`} aria-hidden={!showSideChat}>
+        <SideChatPanel userName={user?.name} selectedTypes={selectedTypes} />
+      </div>
     </section>
   )
 }

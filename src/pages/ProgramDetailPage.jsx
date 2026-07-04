@@ -7,7 +7,9 @@ export function ProgramDetailPage({ program, saved, user, selectedTypes, onBack,
       <div className="programs-main">
         <ProgramDetailPanel program={program} saved={saved} user={user} onBack={onBack} onSave={onSaveProgram} />
       </div>
-      <SideChatPanel userName={user?.name} selectedTypes={selectedTypes} />
+      <div className="side-chat-slot">
+        <SideChatPanel userName={user?.name} selectedTypes={selectedTypes} />
+      </div>
     </section>
   )
 }

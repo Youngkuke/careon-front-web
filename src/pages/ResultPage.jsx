@@ -24,8 +24,8 @@ export function ResultPage({
     .map((typeId) => SUPPORT_TYPE_MAP[typeId]?.shortLabel)
     .filter(Boolean)
   const selectedTypeText = selectedTypeLabels.length
-    ? selectedTypeLabels.slice(0, 2).join('와 ')
-    : '관심'
+    ? selectedTypeLabels.slice(0, 2).map((label) => `[${label}]`).join('와 ')
+    : '[관심]'
 
   useEffect(() => {
     if (!logRef.current) return
@@ -49,8 +49,8 @@ export function ResultPage({
               </ChatBubble>
               <ChatBubble>
                 <strong>
-                  이제 조금 더 자세한 상황을 들어보려고 해요!<br />
-                  이 결과를 저장하고, 상황에 더 맞는 지원을 이어서 찾아드릴게요.
+                  이제 조금 더 자세한 상황을 들어보려고 해요.<br />
+                  회원가입을 통해 사용자님의 결과를 저장하고, 맞춤형 제도를 받아보세요!
                 </strong>
               </ChatBubble>
               {!showSkippedPrograms ? (
