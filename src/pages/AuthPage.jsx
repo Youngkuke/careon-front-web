@@ -33,7 +33,6 @@ export function AuthPage({ onSubmit, onSkip, onFindPassword }) {
             type="password"
             value={form.password}
             onChange={(event) => updateField('password', event.target.value)}
-            helperText="프로토타입에서는 실제 인증을 수행하지 않습니다."
           />
           <div className="auth-actions">
             <Button size="large" className="full-width" type="submit">

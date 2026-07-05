@@ -37,11 +37,16 @@ export function SideChatPanel({ userName, selectedTypes }) {
     ])
   }
 
+  const handleKeyDown = (event) => {
+    if (event.key !== 'Enter' || event.shiftKey) return
+    event.preventDefault()
+    event.currentTarget.form?.requestSubmit()
+  }
+
   return (
     <aside className="side-chat" aria-label="추천 제도 상담">
       <div className="side-chat__header">
         <strong>CareOn 상담</strong>
-        <span>데모 응답</span>
       </div>
       <div className="side-chat__messages" ref={messagesRef}>
         {messages.map((message, index) => (
@@ -55,15 +60,17 @@ export function SideChatPanel({ userName, selectedTypes }) {
       </div>
       <form className="side-chat__form" onSubmit={handleSubmit}>
         <label className="side-chat__input">
-          <span>상담 질문</span>
-          <input
+          <textarea
+            aria-label="상담 질문"
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
+            onKeyDown={handleKeyDown}
             placeholder="예) 신청 서류를 쉽게 알려줘"
+            rows={1}
           />
         </label>
-        <Button type="submit" size="small" disabled={!draft.trim()}>
-          보내기
+        <Button className="side-chat__send" type="submit" size="small" disabled={!draft.trim()} aria-label="보내기">
+          ↑
         </Button>
       </form>
     </aside>

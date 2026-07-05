@@ -21,6 +21,8 @@ export function DiagnosisPage({
   const currentQuestion = isQuestionStep ? DIAGNOSIS_QUESTIONS[currentIndex] : null
   const answeredQuestions = DIAGNOSIS_QUESTIONS.filter((question) => answers[question.id] !== undefined)
   const answeredCount = answeredQuestions.length
+  const progressTotal = DIAGNOSIS_QUESTIONS.length + 1
+  const progressCurrent = answeredCount + (!isQuestionStep && selectedTypes.length ? 1 : 0)
 
   useEffect(() => {
     if (!logRef.current) return
@@ -84,12 +86,12 @@ export function DiagnosisPage({
               ))}
               <div className="conversation-turn">
                 <ChatBubble>
-                  <span>{answeredCount}개 질문 완료</span>
-                  <strong>어떤 유형의 제도를 함께 찾아볼까요?</strong>
+                  <strong>궁금하신 제도의 유형을 선택해주세요.</strong>
+                  <p>복수 선택 가능 (최대 4가지)</p>
                 </ChatBubble>
+                <SupportTypeSelector selectedTypes={selectedTypes} onToggleType={onToggleType} />
               </div>
             </div>
-            <SupportTypeSelector selectedTypes={selectedTypes} onToggleType={onToggleType} />
             <div className="selected-summary">
               {selectedTypes.length ? (
                 selectedTypes.map((typeId) => {
@@ -105,7 +107,7 @@ export function DiagnosisPage({
             </Button>
           </div>
         )}
-        <ProgressBar current={answeredCount} total={DIAGNOSIS_QUESTIONS.length} />
+        <ProgressBar current={progressCurrent} total={progressTotal} />
       </div>
     </section>
   )

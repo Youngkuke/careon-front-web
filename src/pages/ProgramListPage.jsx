@@ -6,6 +6,9 @@ import { ProgramCard } from '../components/programs/ProgramCard'
 import { ProgramSection } from '../components/programs/ProgramSection'
 import { SideChatPanel } from '../components/layout/SideChatPanel'
 
+const SUPPORT_TYPE_ORDER = SUPPORT_TYPES.map((type) => type.id)
+const RESULTS_PER_PAGE = 6
+
 export function ProgramListPage({
   programs,
   selectedTypes,
@@ -18,6 +21,7 @@ export function ProgramListPage({
   const [selectedType, setSelectedType] = useState('all')
   const [status, setStatus] = useState('전체')
   const [showFilter, setShowFilter] = useState(false)
+  const [resultPage, setResultPage] = useState(0)
 
   const filteredPrograms = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase()
@@ -32,12 +36,23 @@ export function ProgramListPage({
     })
   }, [programs, query, selectedType, status])
 
-  const orderedTypes = selectedTypes.length ? selectedTypes : SUPPORT_TYPES.map((type) => type.id)
+  const orderedTypes = selectedTypes.length ? selectedTypes : SUPPORT_TYPE_ORDER
+  const groupedFilteredPrograms = useMemo(() => (
+    [...filteredPrograms].sort((a, b) => SUPPORT_TYPE_ORDER.indexOf(a.type) - SUPPORT_TYPE_ORDER.indexOf(b.type))
+  ), [filteredPrograms])
+  const totalResultPages = Math.max(1, Math.ceil(groupedFilteredPrograms.length / RESULTS_PER_PAGE))
+  const boundedResultPage = Math.min(resultPage, totalResultPages - 1)
+  const visibleFilteredPrograms = groupedFilteredPrograms.slice(
+    boundedResultPage * RESULTS_PER_PAGE,
+    boundedResultPage * RESULTS_PER_PAGE + RESULTS_PER_PAGE,
+  )
   const savedPrograms = programs.filter((program) => savedProgramIds.includes(program.id))
+
   const resetFilter = () => {
     setQuery('')
     setSelectedType('all')
     setStatus('전체')
+    setResultPage(0)
     setShowFilter(false)
   }
 
@@ -89,18 +104,50 @@ export function ProgramListPage({
               query={query}
               selectedType={selectedType}
               status={status}
-              onQueryChange={setQuery}
-              onTypeChange={setSelectedType}
-              onStatusChange={setStatus}
+              onQueryChange={(nextQuery) => {
+                setQuery(nextQuery)
+                setResultPage(0)
+              }}
+              onTypeChange={(nextType) => {
+                setSelectedType(nextType)
+                setResultPage(0)
+              }}
+              onStatusChange={(nextStatus) => {
+                setStatus(nextStatus)
+                setResultPage(0)
+              }}
             />
             <div className="filter-panel__result">
-              <span>검색 결과: {filteredPrograms.length}개</span>
-              <div className="program-list">
-                {filteredPrograms.map((program) => (
+              <div className="filter-panel__result-header">
+                <span>검색 결과: {filteredPrograms.length}개</span>
+                {filteredPrograms.length ? (
+                  <span>{boundedResultPage + 1} / {totalResultPages}</span>
+                ) : null}
+              </div>
+              <div className="program-list program-list--paged">
+                {visibleFilteredPrograms.map((program) => (
                   <ProgramCard key={program.id} program={program} onOpen={onOpenProgram} />
                 ))}
               </div>
               {!filteredPrograms.length ? <p className="empty-state">조건에 맞는 제도를 찾지 못했어요.</p> : null}
+              <div className="filter-pagination">
+                <Button
+                  variant="secondary"
+                  size="small"
+                  disabled={boundedResultPage === 0}
+                  onClick={() => setResultPage((page) => Math.max(0, page - 1))}
+                >
+                  이전
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="small"
+                  disabled={boundedResultPage >= totalResultPages - 1}
+                  onClick={() => setResultPage((page) => Math.min(totalResultPages - 1, page + 1))}
+                >
+                  다음
+                </Button>
+              </div>
             </div>
           </section>
         ) : (
