@@ -75,7 +75,7 @@ export function ProgramListPage({
           {savedPrograms.length ? (
             <div className="program-list program-list--compact">
               {savedPrograms.map((program) => (
-                <ProgramCard key={program.id} program={program} onOpen={onOpenProgram} />
+                <ProgramCard key={program.id} program={program} saved onOpen={onOpenProgram} />
               ))}
             </div>
           ) : (
@@ -126,7 +126,12 @@ export function ProgramListPage({
               </div>
               <div className="program-list program-list--paged">
                 {visibleFilteredPrograms.map((program) => (
-                  <ProgramCard key={program.id} program={program} onOpen={onOpenProgram} />
+                  <ProgramCard
+                    key={program.id}
+                    program={program}
+                    saved={savedProgramIds.includes(program.id)}
+                    onOpen={onOpenProgram}
+                  />
                 ))}
               </div>
               {!filteredPrograms.length ? <p className="empty-state">조건에 맞는 제도를 찾지 못했어요.</p> : null}
@@ -157,6 +162,7 @@ export function ProgramListPage({
                 key={typeId}
                 typeId={typeId}
                 programs={filteredPrograms.filter((program) => program.type === typeId)}
+                savedProgramIds={savedProgramIds}
                 onOpenProgram={onOpenProgram}
               />
             ))}

@@ -1,11 +1,11 @@
 import { SUPPORT_TYPE_MAP } from '../../constants/supportTypes'
 import { Button } from '../common/Button'
 
-export function ProgramCard({ program, onOpen }) {
+export function ProgramCard({ program, onOpen, saved = false }) {
   const type = SUPPORT_TYPE_MAP[program.type]
 
   return (
-    <article className="program-card">
+    <article className={`program-card ${saved ? 'is-saved' : ''}`}>
       <div className="program-card__meta">
         <span>{type?.shortLabel}</span>
         <span>{program.status}</span>

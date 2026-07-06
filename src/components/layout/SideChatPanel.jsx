@@ -4,6 +4,7 @@ import chatbotImg from '../../assets/chatbot.svg'
 
 export function SideChatPanel({ userName, selectedTypes }) {
   const messagesRef = useRef(null)
+  const isComposingRef = useRef(false)
   const [draft, setDraft] = useState('')
   const [messages, setMessages] = useState([
     {
@@ -39,6 +40,11 @@ export function SideChatPanel({ userName, selectedTypes }) {
 
   const handleKeyDown = (event) => {
     if (event.key !== 'Enter' || event.shiftKey) return
+
+    if (event.nativeEvent.isComposing || event.keyCode === 229 || isComposingRef.current) {
+      return
+    }
+
     event.preventDefault()
     event.currentTarget.form?.requestSubmit()
   }
@@ -64,6 +70,14 @@ export function SideChatPanel({ userName, selectedTypes }) {
             aria-label="상담 질문"
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
+            onCompositionStart={() => {
+              isComposingRef.current = true
+            }}
+            onCompositionEnd={() => {
+              window.setTimeout(() => {
+                isComposingRef.current = false
+              }, 0)
+            }}
             onKeyDown={handleKeyDown}
             placeholder="예) 신청 서류를 쉽게 알려줘"
             rows={1}
