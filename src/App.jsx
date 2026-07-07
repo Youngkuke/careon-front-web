@@ -7,25 +7,31 @@ import { Modal } from './components/common/Modal'
 import { PageShell } from './components/layout/PageShell'
 import { AuthPage } from './pages/AuthPage'
 import { DiagnosisPage } from './pages/DiagnosisPage'
+import { FollowupQuestionPage } from './pages/FollowupQuestionPage'
 import { MyPage } from './pages/MyPage'
 import { OnboardingPage } from './pages/OnboardingPage'
 import { PasswordResetPage } from './pages/PasswordResetPage'
+import { ProgramChatPage } from './pages/ProgramChatPage'
 import { ProgramDetailPage } from './pages/ProgramDetailPage'
 import { ProgramListPage } from './pages/ProgramListPage'
 import { ResultPage } from './pages/ResultPage'
 import { SignupPage } from './pages/SignupPage'
-import chatbotImg from './assets/chatbot.svg'
+import endLoadingImg from './assets/endloading.svg'
+import startLoadingImg from './assets/startloading.svg'
 
-function AnalyzingPage() {
+const FOLLOWUP_PENDING_KEY = 'careon:followupPending'
+const FOLLOWUP_COMPLETED_KEY = 'careon:followupCompleted'
+
+function AnalyzingPage({ complete }) {
   return (
     <section className="flow-page">
       <div className="flow-card analyzing-card">
-        <div className="loading-spinner" aria-hidden="true">
+        <div className={`loading-spinner ${complete ? 'is-complete' : ''}`} aria-hidden="true">
           <svg className="loading-spinner__ring" viewBox="0 0 120 120">
             <circle className="loading-spinner__track" cx="60" cy="60" r="51" />
             <circle className="loading-spinner__progress" cx="60" cy="60" r="51" />
           </svg>
-          <img className="loading-spinner__icon" src={chatbotImg} alt="" />
+          <img className="loading-spinner__icon" src={complete ? endLoadingImg : startLoadingImg} alt="" />
         </div>
         <h1 className="analyzing-message">
           작성해주신 소중한 답변을 바탕으로,<br />
@@ -44,6 +50,11 @@ const readSessionTypes = () => {
   }
 }
 
+const shouldShowFollowupFirst = () => (
+  localStorage.getItem(FOLLOWUP_PENDING_KEY) === 'true'
+  && localStorage.getItem(FOLLOWUP_COMPLETED_KEY) !== 'true'
+)
+
 function App() {
   const [view, setView] = useState('onboarding')
   const [answers, setAnswers] = useState({})
@@ -55,6 +66,9 @@ function App() {
   const [installPromptInstalled, setInstallPromptInstalled] = useState(false)
   const [showInstallModal, setShowInstallModal] = useState(false)
   const [showSideChat, setShowSideChat] = useState(true)
+  const [authNextView, setAuthNextView] = useState('programs')
+  const [analyzingNextView, setAnalyzingNextView] = useState('result')
+  const [analyzingComplete, setAnalyzingComplete] = useState(false)
 
   const eligible = REQUIRED_DIAGNOSIS_IDS.every((id) => answers[id] === true)
   const activeProgram = MOCK_PROGRAMS.find((program) => program.id === activeProgramId)
@@ -67,16 +81,28 @@ function App() {
   useEffect(() => {
     if (view !== 'analyzing') return undefined
 
-    const timer = window.setTimeout(() => {
-      setView('result')
+    const completeTimer = window.setTimeout(() => {
+      setAnalyzingComplete(true)
     }, 2000)
 
-    return () => window.clearTimeout(timer)
-  }, [view])
+    const timer = window.setTimeout(() => {
+      setView(analyzingNextView)
+    }, 3000)
+
+    return () => {
+      window.clearTimeout(completeTimer)
+      window.clearTimeout(timer)
+    }
+  }, [analyzingNextView, view])
 
   const navigate = (nextView) => {
     if (nextView === 'programs' && !user) {
       setView('auth')
+      return
+    }
+
+    if (nextView === 'programs' && shouldShowFollowupFirst()) {
+      setView('followup')
       return
     }
 
@@ -132,13 +158,24 @@ function App() {
       district: formUser.district || DEFAULT_USER.district,
     })
     sessionStorage.setItem('careon:selectedTypes', JSON.stringify(selectedTypes))
-    navigate('programs')
+    navigate(shouldShowFollowupFirst() ? 'followup' : authNextView)
+    setAuthNextView('programs')
+  }
+
+  const handleStartFollowupAnalyzing = () => {
+    localStorage.setItem(FOLLOWUP_COMPLETED_KEY, 'true')
+    localStorage.removeItem(FOLLOWUP_PENDING_KEY)
+    setAnalyzingNextView('programs')
+    setAnalyzingComplete(false)
+    navigate('analyzing')
   }
 
   const handleRestart = () => {
     setAnswers({})
     setSelectedTypes([])
     sessionStorage.removeItem('careon:selectedTypes')
+    localStorage.removeItem(FOLLOWUP_PENDING_KEY)
+    localStorage.removeItem(FOLLOWUP_COMPLETED_KEY)
     navigate('diagnosis')
   }
 
@@ -155,14 +192,18 @@ function App() {
           selectedTypes={selectedTypes}
           onAnswer={handleAnswer}
           onToggleType={handleToggleType}
-          onComplete={() => navigate('analyzing')}
+          onComplete={() => {
+            setAnalyzingNextView('result')
+            setAnalyzingComplete(false)
+            navigate('analyzing')
+          }}
           onBack={() => navigate('onboarding')}
         />
       )
     }
 
     if (view === 'analyzing') {
-      return <AnalyzingPage />
+      return <AnalyzingPage complete={analyzingComplete} />
     }
 
     if (view === 'result') {
@@ -173,14 +214,33 @@ function App() {
           selectedTypes={selectedTypes}
           alternativePrograms={selectedPrograms}
           savedProgramIds={savedProgramIds}
-          onAuth={() => navigate('auth')}
-          onSignup={() => navigate('signup')}
+          onAuth={() => {
+            localStorage.setItem(FOLLOWUP_PENDING_KEY, 'true')
+            localStorage.removeItem(FOLLOWUP_COMPLETED_KEY)
+            setAuthNextView('followup')
+            navigate('auth')
+          }}
+          onSignup={() => {
+            localStorage.setItem(FOLLOWUP_PENDING_KEY, 'true')
+            localStorage.removeItem(FOLLOWUP_COMPLETED_KEY)
+            setAuthNextView('followup')
+            navigate('signup')
+          }}
           onOpenProgram={(programId) => {
             setActiveProgramId(programId)
             navigate('detail')
           }}
           onSaveProgram={handleSaveProgram}
           onRestart={handleRestart}
+        />
+      )
+    }
+
+    if (view === 'followup') {
+      return (
+        <FollowupQuestionPage
+          userName={user?.name}
+          onComplete={handleStartFollowupAnalyzing}
         />
       )
     }
@@ -221,11 +281,22 @@ function App() {
           savedProgramIds={savedProgramIds}
           user={user}
           showSideChat={showSideChat}
+          onOpenChat={() => navigate('programChat')}
           onOpenProgram={(programId) => {
             setActiveProgramId(programId)
             navigate('detail')
           }}
           onSaveProgram={handleSaveProgram}
+        />
+      )
+    }
+
+    if (view === 'programChat') {
+      return (
+        <ProgramChatPage
+          user={user}
+          selectedTypes={selectedTypes}
+          onBack={() => navigate('programs')}
         />
       )
     }
@@ -260,7 +331,15 @@ function App() {
       )
     }
 
-    return <OnboardingPage onStart={() => navigate('diagnosis')} onLogin={() => navigate('auth')} />
+    return (
+      <OnboardingPage
+        onStart={() => navigate('diagnosis')}
+        onLogin={() => {
+          setAuthNextView('programs')
+          navigate('auth')
+        }}
+      />
+    )
   }
 
   return (

@@ -2,11 +2,19 @@ import { useEffect, useRef, useState } from 'react'
 import { Button } from '../common/Button'
 import chatbotImg from '../../assets/chatbot.svg'
 
-export function SideChatPanel({ userName, selectedTypes }) {
+export function SideChatPanel({
+  userName,
+  selectedTypes,
+  className = '',
+  onBack,
+  readOnly = false,
+  initialMessages,
+  onSubmitMessage,
+}) {
   const messagesRef = useRef(null)
   const isComposingRef = useRef(false)
   const [draft, setDraft] = useState('')
-  const [messages, setMessages] = useState([
+  const [messages, setMessages] = useState(initialMessages || [
     {
       from: 'bot',
       text: `${userName || '사용자'}님 상황에 맞춰 추천 제도를 같이 살펴볼게요. 궁금한 내용을 편하게 입력해 주세요.`,
@@ -36,6 +44,10 @@ export function SideChatPanel({ userName, selectedTypes }) {
       { from: 'user', text: question },
       { from: 'bot', text: answer },
     ])
+
+    if (typeof onSubmitMessage === 'function') {
+      onSubmitMessage(question)
+    }
   }
 
   const handleKeyDown = (event) => {
@@ -50,9 +62,14 @@ export function SideChatPanel({ userName, selectedTypes }) {
   }
 
   return (
-    <aside className="side-chat" aria-label="추천 제도 상담">
+    <aside className={`side-chat ${className}`} aria-label="추천 제도 상담">
       <div className="side-chat__header">
         <strong>CareOn 상담</strong>
+        {onBack ? (
+          <Button variant="secondary" size="small" onClick={onBack}>
+            돌아가기
+          </Button>
+        ) : null}
       </div>
       <div className="side-chat__messages" ref={messagesRef}>
         {messages.map((message, index) => (
@@ -64,29 +81,31 @@ export function SideChatPanel({ userName, selectedTypes }) {
           </div>
         ))}
       </div>
-      <form className="side-chat__form" onSubmit={handleSubmit}>
-        <label className="side-chat__input">
-          <textarea
-            aria-label="상담 질문"
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            onCompositionStart={() => {
-              isComposingRef.current = true
-            }}
-            onCompositionEnd={() => {
-              window.setTimeout(() => {
-                isComposingRef.current = false
-              }, 0)
-            }}
-            onKeyDown={handleKeyDown}
-            placeholder="예) 신청 서류를 쉽게 알려줘"
-            rows={1}
-          />
-        </label>
-        <Button className="side-chat__send" type="submit" size="small" disabled={!draft.trim()} aria-label="보내기">
-          ↑
-        </Button>
-      </form>
+      {!readOnly ? (
+        <form className="side-chat__form" onSubmit={handleSubmit}>
+          <label className="side-chat__input">
+            <textarea
+              aria-label="상담 질문"
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              onCompositionStart={() => {
+                isComposingRef.current = true
+              }}
+              onCompositionEnd={() => {
+                window.setTimeout(() => {
+                  isComposingRef.current = false
+                }, 0)
+              }}
+              onKeyDown={handleKeyDown}
+              placeholder="예) 신청 서류를 쉽게 알려줘"
+              rows={1}
+            />
+          </label>
+          <Button className="side-chat__send" type="submit" size="small" disabled={!draft.trim()} aria-label="보내기">
+            ↑
+          </Button>
+        </form>
+      ) : null}
     </aside>
   )
 }

@@ -150,12 +150,11 @@ export function ProgramDetailPanel({ program, saved, user, onBack, onSave }) {
 
   const rows = [
     ['지원 기간', program.period],
-    ['비용 부담', program.cost],
-    ['신청 마감일', program.deadline],
     ['신청 방법', program.method],
-    ['소요 시간', program.resultTime],
+    ['신청 기간', program.deadline],
+    ['결과 발표일', program.resultTime],
+    ['문의처', program.agency],
   ]
-  const notes = [program.documentGuide, program.note, program.duplicateRule].filter(Boolean)
   const selectedDocumentGuide = selectedDocument ? getDocumentGuide(selectedDocument, program) : null
 
   const handleSaveClick = () => {
@@ -245,14 +244,6 @@ export function ProgramDetailPanel({ program, saved, user, onBack, onSave }) {
           </section>
         </div>
       ) : null}
-      <section className="detail-section">
-        <h2>특이사항</h2>
-        <div className="detail-note-box">
-          {notes.map((note) => (
-            <p key={note}>{note}</p>
-          ))}
-        </div>
-      </section>
       <div className="detail-panel__actions">
         <Button className={`detail-save-button ${saved ? 'is-saved' : ''}`} disabled={!user} onClick={handleSaveClick}>
           {saved ? '마감일 알림 받는 중' : '마감일 알림 받기'}

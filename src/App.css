@@ -471,7 +471,12 @@ main {
   inset: 0;
   width: 100%;
   height: 100%;
+  z-index: 3;
   animation: loading-spin 1.2s linear infinite;
+}
+
+.loading-spinner.is-complete .loading-spinner__ring {
+  animation: none;
 }
 
 .loading-spinner__track,
@@ -492,17 +497,58 @@ main {
   transform-origin: 50% 50%;
 }
 
+.loading-spinner.is-complete .loading-spinner__progress {
+  stroke-dasharray: 321 321;
+  stroke-linecap: butt;
+  animation: loading-ring-pop 620ms cubic-bezier(0.2, 1.5, 0.42, 1) both;
+}
+
 .loading-spinner__icon {
-  width: 14.25rem;
-  height: 14.25rem;
+  width: 10.6875rem;
+  height: 10.6875rem;
   position: relative;
-  z-index: 1;
+  z-index: 2;
   object-fit: contain;
+}
+
+.loading-spinner.is-complete .loading-spinner__icon {
+  animation: loading-icon-pop 620ms cubic-bezier(0.2, 1.5, 0.42, 1) both;
 }
 
 @keyframes loading-spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@keyframes loading-icon-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.72);
+  }
+
+  58% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes loading-ring-pop {
+  0% {
+    transform: rotate(-88deg) scale(0.94);
+  }
+
+  58% {
+    transform: rotate(-88deg) scale(1.05);
+  }
+
+  100% {
+    transform: rotate(-88deg) scale(1);
   }
 }
 
@@ -962,6 +1008,11 @@ main {
   gap: 1.5rem;
 }
 
+.programs-page--recommendation .programs-main {
+  flex-basis: min(80rem, 100%);
+  max-width: 80rem;
+}
+
 .page-heading {
   gap: 0.625rem;
 }
@@ -1194,6 +1245,7 @@ main {
 }
 
 .selected-programs {
+  position: relative;
   min-height: auto;
   padding: 0 0 1.5rem;
   border: 0;
@@ -1201,6 +1253,68 @@ main {
   border-radius: 0;
   background: transparent;
   box-shadow: none;
+}
+
+.selected-programs__chat-button {
+  position: absolute;
+  top: 1.125rem;
+  right: 1.125rem;
+  z-index: 1;
+  width: 4.75rem;
+  height: 4.75rem;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  display: grid;
+  place-items: center;
+}
+
+.selected-programs__chat-button::after {
+  content: "";
+  position: absolute;
+  left: 0.25rem;
+  bottom: 0.25rem;
+  width: 1.55rem;
+  height: 1.55rem;
+  background: #ffffff;
+  clip-path: polygon(0 100%, 100% 0, 100% 100%);
+  transform: rotate(10deg);
+  filter: drop-shadow(0 0.5rem 0.75rem rgba(14, 159, 114, 0.12));
+}
+
+.selected-programs__chat-avatar {
+  position: relative;
+  z-index: 1;
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 62.4375rem;
+  background: #ffffff;
+  overflow: hidden;
+  box-shadow: 0 0.625rem 1.5rem rgba(14, 159, 114, 0.18);
+  display: grid;
+  place-items: center;
+}
+
+.selected-programs__chat-avatar img {
+  width: 4.25rem;
+  height: 4.25rem;
+  object-fit: contain;
+  transform: translateY(0.25rem);
+}
+
+.program-chat-page {
+  width: 100%;
+  min-height: calc(100svh - 6rem);
+  padding: 1.5rem 2.5rem 2.25rem;
+  background: linear-gradient(180deg, #ffffff, #f8fffb);
+  display: flex;
+  justify-content: center;
+}
+
+.program-chat-page .side-chat--full {
+  width: min(76rem, 100%);
+  height: calc(100svh - 9.75rem);
+  max-height: none;
 }
 
 .selected-programs.is-empty {
@@ -1213,6 +1327,10 @@ main {
   align-items: center;
   justify-content: space-between;
   gap: 0.875rem;
+}
+
+.selected-programs .selected-programs__header {
+  padding-right: 5rem;
 }
 
 .filter-panel__result > span {
@@ -1251,7 +1369,6 @@ main {
 
 .selected-programs__empty {
   min-height: 13.5rem;
-  border-top: 0.09375rem solid rgba(12, 28, 22, 0.08);
   border-bottom: 0.09375rem solid rgba(12, 28, 22, 0.08);
   display: flex;
   flex-direction: column;
@@ -1261,14 +1378,10 @@ main {
   text-align: center;
 }
 
-.selected-programs__empty > span {
-  width: 3.375rem;
-  height: 3.375rem;
-  border-radius: 62.4375rem;
-  background:
-    radial-gradient(circle at 36% 32%, rgba(255, 255, 255, 0.9) 0 16%, transparent 17%),
-    linear-gradient(135deg, rgba(32, 214, 155, 0.36), rgba(14, 159, 114, 0.2));
-  display: flex;
+.selected-programs__empty > img {
+  width: 5.625rem;
+  height: 5.625rem;
+  object-fit: contain;
 }
 
 .selected-programs__empty strong {
@@ -1332,6 +1445,36 @@ main {
   box-shadow: 0 1.25rem 3.5rem rgba(14, 159, 114, 0.1);
   transform: translateX(0);
   transition: transform 260ms ease, opacity 220ms ease;
+}
+
+.side-chat--full,
+.side-chat--embedded {
+  position: static;
+  inset: auto;
+  transform: none;
+}
+
+.side-chat--full {
+  width: 100%;
+  border: 0.09375rem solid rgba(32, 214, 155, 0.12);
+  background:
+    linear-gradient(180deg, rgba(232, 255, 246, 0.54), rgba(255, 255, 255, 0.86)),
+    #f7fbf8;
+}
+
+.side-chat--embedded {
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  border: 0.09375rem solid rgba(32, 214, 155, 0.12);
+  background:
+    linear-gradient(180deg, rgba(232, 255, 246, 0.44), rgba(255, 255, 255, 0.92)),
+    #f7fbf8;
+  box-shadow: none;
+}
+
+.side-chat--readonly .side-chat__messages {
+  padding-top: 0.25rem;
 }
 
 .side-chat-slot.is-hidden .side-chat {
@@ -1455,12 +1598,45 @@ main {
 
 .detail-panel {
   position: relative;
-  min-height: 52.0625rem;
-  padding: 2.125rem;
+  min-height: 0;
+  padding: 2rem;
   border: 0;
   border-radius: 1.75rem;
-  background: #ffffff;
-  gap: 1.5rem;
+  background:
+    linear-gradient(180deg, rgba(232, 255, 246, 0.28), rgba(255, 255, 255, 0.96)),
+    #ffffff;
+  gap: 1.25rem;
+}
+
+.program-detail-page {
+  width: min(80rem, 80%);
+  margin: 0 auto;
+  padding: 1.8125rem 0 2.25rem;
+  display: grid;
+  grid-template-columns: minmax(0, 5.5fr) minmax(20rem, 4.5fr);
+  gap: 1rem;
+}
+
+.program-detail-main,
+.program-detail-insight {
+  min-width: 0;
+  height: min(47rem, calc(100svh - 10rem));
+  min-height: 38rem;
+}
+
+.program-detail-main .detail-panel,
+.program-detail-insight .side-chat {
+  height: 100%;
+  border-radius: 1.5rem;
+  overflow: auto;
+}
+
+.program-detail-insight .side-chat {
+  overflow: hidden;
+}
+
+.program-detail-insight .side-chat__messages {
+  overflow: hidden;
 }
 
 .detail-panel__title {
@@ -1508,10 +1684,11 @@ main {
 }
 
 .detail-list div {
-  min-height: 3.5625rem;
-  padding: 0.875rem 1.25rem;
+  min-height: 3.125rem;
+  padding: 0.75rem 1rem;
   border-radius: 0.875rem;
-  background: #eeeeee;
+  background: rgba(232, 255, 246, 0.72);
+  border: 0.09375rem solid rgba(14, 159, 114, 0.1);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1549,11 +1726,13 @@ main {
 }
 
 .detail-document-card {
-  min-height: 8.75rem;
-  padding: 1.25rem;
-  border: 0.09375rem solid #dddddd;
+  min-height: 7.25rem;
+  padding: 1rem;
+  border: 0.09375rem solid rgba(14, 159, 114, 0.16);
   border-radius: 1rem;
-  background: #ffffff;
+  background:
+    linear-gradient(180deg, #ffffff, rgba(244, 255, 250, 0.9)),
+    #ffffff;
   color: inherit;
   display: flex;
   flex-direction: column;
@@ -1585,7 +1764,7 @@ main {
 
 .detail-document-card strong {
   color: #3a433f;
-  font-size: 1.125rem;
+  font-size: 1rem;
   line-height: 1.35;
   font-weight: 900;
 }
@@ -1702,10 +1881,10 @@ main {
 
 .detail-save-button.button {
   flex: 1 1 100%;
-  min-height: 5.25rem;
+  min-height: 4.25rem;
   border-radius: 1.125rem;
   color: #ffffff;
-  font-size: 1.375rem;
+  font-size: 1.25rem;
   box-shadow: 0 1rem 2.25rem rgba(32, 214, 155, 0.22);
 }
 
@@ -1818,13 +1997,9 @@ main {
 .install-modal::before {
   content: "";
   align-self: center;
-  width: 5.3125rem;
-  height: 5.3125rem;
-  border-radius: 62.4375rem;
-  background:
-    radial-gradient(circle at 35% 30%, #ffffff 0 16%, transparent 17%),
-    linear-gradient(135deg, var(--primary), #8ff0cf);
-  box-shadow: 0 1rem 2.25rem rgba(32, 214, 155, 0.24);
+  width: 7.96875rem;
+  height: 7.96875rem;
+  background: url("./assets/alarm.svg") center / contain no-repeat;
 }
 
 .install-modal h2 {
@@ -1864,15 +2039,9 @@ main {
 .save-cancel-modal::before {
   content: "";
   align-self: center;
-  width: 4rem;
-  height: 4rem;
-  border-radius: 62.4375rem;
-  background:
-    url("./assets/chatbot.svg") center / 168% no-repeat,
-    linear-gradient(#ffffff, #ffffff) padding-box,
-    linear-gradient(135deg, var(--primary), #8ff0cf) border-box;
-  border: 0.5rem solid transparent;
-  box-shadow: 0 1rem 2.25rem rgba(32, 214, 155, 0.18);
+  width: 6rem;
+  height: 6rem;
+  background: url("./assets/delete.svg") center / contain no-repeat;
 }
 
 .save-cancel-modal h2 {
@@ -1969,6 +2138,37 @@ main {
   .programs-page {
     flex-direction: column;
     gap: 1.5rem;
+  }
+
+  .program-chat-page,
+  .program-detail-page {
+    width: 100%;
+    min-height: calc(100svh - 4.75rem);
+    padding: 1.25rem 1.125rem;
+  }
+
+  .program-chat-page .side-chat--full {
+    height: calc(100svh - 7.25rem);
+  }
+
+  .program-detail-page {
+    grid-template-columns: 1fr;
+  }
+
+  .program-detail-main,
+  .program-detail-insight {
+    height: auto;
+    min-height: auto;
+  }
+
+  .program-detail-main .detail-panel,
+  .program-detail-insight .side-chat {
+    height: auto;
+    overflow: visible;
+  }
+
+  .program-detail-insight .side-chat__messages {
+    overflow: visible;
   }
 
   .programs-main,
