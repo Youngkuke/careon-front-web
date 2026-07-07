@@ -1,5 +1,5 @@
 import { Button } from '../common/Button'
-import logoImg from '../../assets/logo.svg'
+import logoImg from '../../assets/logo.webp'
 
 export function PageShell({ children, currentView, user, onNavigate, onLogout }) {
   const showAccount = currentView === 'programs' && user

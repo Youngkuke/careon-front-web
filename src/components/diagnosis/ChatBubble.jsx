@@ -1,4 +1,4 @@
-import chatbotImg from '../../assets/chatbot.svg'
+import chatbotImg from '../../assets/chatbot.webp'
 
 export function ChatBubble({ children, tone = 'bot' }) {
   return (

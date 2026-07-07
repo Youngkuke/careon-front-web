@@ -2,8 +2,8 @@ import { useMemo } from 'react'
 import { SUPPORT_TYPES } from '../constants/supportTypes'
 import { ProgramCard } from '../components/programs/ProgramCard'
 import { ProgramSection } from '../components/programs/ProgramSection'
-import chatbotImg from '../assets/chatbot.svg'
-import noneSaveImg from '../assets/nonesave.svg'
+import chatbotImg from '../assets/chatbot.webp'
+import noneSaveImg from '../assets/nonesave.webp'
 
 const SUPPORT_TYPE_ORDER = SUPPORT_TYPES.map((type) => type.id)
 

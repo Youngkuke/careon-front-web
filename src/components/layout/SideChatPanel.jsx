@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '../common/Button'
-import chatbotImg from '../../assets/chatbot.svg'
+import chatbotImg from '../../assets/chatbot.webp'
 
 export function SideChatPanel({
   userName,

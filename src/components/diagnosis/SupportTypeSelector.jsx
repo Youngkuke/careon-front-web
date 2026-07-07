@@ -1,8 +1,8 @@
 import { SUPPORT_TYPES } from '../../constants/supportTypes'
-import brainIcon from '../../assets/brain.svg'
-import careIcon from '../../assets/care.svg'
-import homeIcon from '../../assets/home.svg'
-import medicalIcon from '../../assets/medical.svg'
+import brainIcon from '../../assets/brain.webp'
+import careIcon from '../../assets/care.webp'
+import homeIcon from '../../assets/home.webp'
+import medicalIcon from '../../assets/medical.webp'
 
 const SUPPORT_TYPE_ICONS = {
   living: homeIcon,
