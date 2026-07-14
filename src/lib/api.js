@@ -17,6 +17,14 @@ const typeByLabel = [
   ['mental', ['심리', '마음', '청년']],
 ]
 
+export class ApiError extends Error {
+  constructor(message, status) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+  }
+}
+
 export function getAccessToken() {
   return localStorage.getItem(TOKEN_KEY)
 }
@@ -56,7 +64,7 @@ async function request(path, { method = 'GET', body, auth = false } = {}) {
 
   if (!response.ok) {
     const message = data?.message || '요청을 처리하지 못했어요.'
-    throw new Error(message)
+    throw new ApiError(message, response.status)
   }
 
   return data
@@ -107,6 +115,16 @@ export function normalizePolicy(item) {
   }
 }
 
+export function normalizeMatchedPolicyGroups(groups = []) {
+  return groups.flatMap((group) => (
+    group.policies || []
+  ).map((policy) => normalizePolicy({
+    ...policy,
+    policyTypeId: Number(group.policyTypeId),
+    policyType: group.policyTypeName,
+  })))
+}
+
 export function selectedTypeIdsToApiIds(selectedTypes) {
   const ids = selectedTypes
     .map((typeId) => SUPPORT_TYPES.find((type) => type.id === typeId)?.apiId)
@@ -133,6 +151,7 @@ export const api = {
   getAlternatives: (interestTypeIds) => request(
     `/api/web/policies/alternatives?interestTypeIds=${encodeURIComponent(interestTypeIds.join(','))}`,
   ),
+  getMatchedPolicies: () => request('/api/web/policies/matched', { auth: true }),
   getPolicyDetail: (policyId) => request(`/api/web/policies/${policyId}`),
   getSavedPolicies: () => request('/api/web/users/me/saved-policies', { auth: true }),
   savePolicy: (policyId) => request('/api/web/users/me/saved-policies', {
@@ -143,5 +162,9 @@ export const api = {
   cancelSavedPolicy: (savedPolicyId) => request(`/api/web/users/me/saved-policies/${savedPolicyId}`, {
     method: 'DELETE',
     auth: true,
+  }),
+  resetPassword: (payload) => request('/api/web/users/password/reset', {
+    method: 'POST',
+    body: payload,
   }),
 }

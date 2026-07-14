@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import './App.css'
 import { REQUIRED_DIAGNOSIS_IDS } from './constants/diagnosisQuestions'
 import { MOCK_PROGRAMS } from './data/mockPrograms'
@@ -6,6 +6,7 @@ import {
   api,
   clearAccessToken,
   getAccessToken,
+  normalizeMatchedPolicyGroups,
   normalizePolicy,
   selectedTypeIdsToApiIds,
   setAccessToken,
@@ -89,6 +90,19 @@ function App() {
   }, [programs, selectedTypes])
   const savedPrograms = programs.filter((program) => savedProgramIds.includes(program.id))
 
+  const clearUserSession = useCallback(() => {
+    clearAccessToken()
+    setUser(null)
+    setSavedProgramIds([])
+    setSavedPolicyIdByProgramId({})
+  }, [])
+
+  const handleAuthExpired = useCallback(() => {
+    clearUserSession()
+    setApiError('로그인이 필요합니다. 다시 로그인해주세요.')
+    setView('auth')
+  }, [clearUserSession])
+
   const refreshSavedPolicies = async () => {
     const savedPolicies = await api.getSavedPolicies()
     const normalized = savedPolicies.map(normalizePolicy)
@@ -106,22 +120,39 @@ function App() {
   useEffect(() => {
     let ignore = false
 
-    api.getAlternatives(selectedTypeIdsToApiIds(selectedTypes))
-      .then((alternatives) => {
+    const loadPrograms = user
+      ? api.getMatchedPolicies()
+        .then((groups) => normalizeMatchedPolicyGroups(groups))
+        .catch((error) => {
+          if (error.status === 401) {
+            throw error
+          }
+          return api.getAlternatives(selectedTypeIdsToApiIds(selectedTypes))
+            .then((alternatives) => alternatives.map(normalizePolicy))
+        })
+      : api.getAlternatives(selectedTypeIdsToApiIds(selectedTypes))
+        .then((alternatives) => alternatives.map(normalizePolicy))
+
+    loadPrograms
+      .then((nextPrograms) => {
         if (!ignore) {
-          setPrograms(alternatives.map(normalizePolicy))
+          setPrograms(nextPrograms.length ? nextPrograms : [])
         }
       })
-      .catch(() => {
+      .catch((error) => {
         if (!ignore) {
-          setPrograms(MOCK_PROGRAMS)
+          if (error.status === 401) {
+            handleAuthExpired()
+          } else {
+            setPrograms(MOCK_PROGRAMS)
+          }
         }
       })
 
     return () => {
       ignore = true
     }
-  }, [selectedTypes])
+  }, [handleAuthExpired, selectedTypes, user])
 
   useEffect(() => {
     if (!getAccessToken()) return
@@ -208,7 +239,11 @@ function App() {
         setShowInstallModal(true)
       }
     } catch (error) {
-      setApiError(error.message)
+      if (error.status === 401) {
+        handleAuthExpired()
+      } else {
+        setApiError(error.message)
+      }
     }
   }
 
@@ -217,7 +252,11 @@ function App() {
       try {
         await api.updateAppInstallStatus(true)
       } catch (error) {
-        setApiError(error.message)
+        if (error.status === 401) {
+          handleAuthExpired()
+        } else {
+          setApiError(error.message)
+        }
       }
     }
     setInstallPromptInstalled(true)
@@ -229,7 +268,11 @@ function App() {
       try {
         await api.updateAppInstallStatus(false)
       } catch (error) {
-        setApiError(error.message)
+        if (error.status === 401) {
+          handleAuthExpired()
+        } else {
+          setApiError(error.message)
+        }
       }
     }
     setInstallPromptSkipCount((count) => Math.min(count + 1, 2))
@@ -317,10 +360,7 @@ function App() {
   }
 
   const handleLogout = () => {
-    clearAccessToken()
-    setUser(null)
-    setSavedProgramIds([])
-    setSavedPolicyIdByProgramId({})
+    clearUserSession()
     navigate('onboarding')
   }
 
@@ -335,7 +375,11 @@ function App() {
       })
       setUser(await api.me())
     } catch (error) {
-      setApiError(error.message)
+      if (error.status === 401) {
+        handleAuthExpired()
+      } else {
+        setApiError(error.message)
+      }
     }
   }
 
@@ -343,13 +387,14 @@ function App() {
     setApiError('')
     try {
       await api.withdraw()
-      clearAccessToken()
-      setUser(null)
-      setSavedProgramIds([])
-      setSavedPolicyIdByProgramId({})
+      clearUserSession()
       navigate('onboarding')
     } catch (error) {
-      setApiError(error.message)
+      if (error.status === 401) {
+        handleAuthExpired()
+      } else {
+        setApiError(error.message)
+      }
     }
   }
 
@@ -438,6 +483,7 @@ function App() {
       return (
         <PasswordResetPage
           onSendResetLink={api.sendPasswordResetLink}
+          onResetPassword={api.resetPassword}
           onBack={() => navigate('auth')}
           onComplete={() => navigate('auth')}
         />
