@@ -63,8 +63,20 @@ const shouldShowFollowupFirst = () => (
   && localStorage.getItem(FOLLOWUP_COMPLETED_KEY) !== 'true'
 )
 
+const isPasswordResetUrl = () => (
+  window.location.pathname === '/reset-password'
+  || new URLSearchParams(window.location.search).has('token')
+  || new URLSearchParams(window.location.search).has('resetToken')
+)
+
+const clearPasswordResetUrl = () => {
+  if (isPasswordResetUrl()) {
+    window.history.replaceState(null, '', '/')
+  }
+}
+
 function App() {
-  const [view, setView] = useState('onboarding')
+  const [view, setView] = useState(() => (isPasswordResetUrl() ? 'passwordReset' : 'onboarding'))
   const [answers, setAnswers] = useState({})
   const [selectedTypes, setSelectedTypes] = useState(readSessionTypes)
   const [user, setUser] = useState(null)
@@ -190,6 +202,10 @@ function App() {
   }, [analyzingNextView, view])
 
   const navigate = (nextView) => {
+    if (view === 'passwordReset' && nextView !== 'passwordReset') {
+      clearPasswordResetUrl()
+    }
+
     if (nextView === 'programs' && !user) {
       setView('auth')
       return
@@ -484,8 +500,14 @@ function App() {
         <PasswordResetPage
           onSendResetLink={api.sendPasswordResetLink}
           onResetPassword={api.resetPassword}
-          onBack={() => navigate('auth')}
-          onComplete={() => navigate('auth')}
+          onBack={() => {
+            clearPasswordResetUrl()
+            navigate('auth')
+          }}
+          onComplete={() => {
+            clearPasswordResetUrl()
+            navigate('auth')
+          }}
         />
       )
     }

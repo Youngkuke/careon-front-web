@@ -4,6 +4,11 @@ import logoImg from '../../assets/logo.webp'
 export function PageShell({ children, currentView, user, onNavigate, onLogout }) {
   const showAccount = currentView === 'programs' && user
   const handleLogoClick = () => {
+    if (currentView === 'passwordReset') {
+      onNavigate('auth')
+      return
+    }
+
     onNavigate(user ? 'programs' : 'onboarding')
   }
 
