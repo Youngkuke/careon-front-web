@@ -25,6 +25,7 @@ dist-ssr
 
 # Project planning docs
 /PRD.md
+/api.md
 /기능정의서.md
 /요구사항정의서.md
 /프로젝트개요.md
