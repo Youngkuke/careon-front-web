@@ -29,7 +29,6 @@ export function PasswordResetPage({ onSendResetLink, onResetPassword, onBack, on
       <section className="auth-page auth-page--password">
         <div className="auth-panel password-panel">
           <div className="password-hero">
-            <span className="password-hero__eyebrow">CareOn 계정 보호</span>
             <h1>비밀번호 재설정 완료</h1>
             <p>새 비밀번호로 다시 로그인하면 맞춤 제도 추천을 이어갈 수 있어요.</p>
           </div>
@@ -50,7 +49,6 @@ export function PasswordResetPage({ onSendResetLink, onResetPassword, onBack, on
       <section className="auth-page auth-page--password">
         <div className="auth-panel password-panel">
           <div className="password-hero">
-            <span className="password-hero__eyebrow">CareOn 계정 보호</span>
             <h1>새 비밀번호 설정</h1>
             <p>메일로 받은 인증 링크가 확인되었어요. 앞으로 사용할 비밀번호를 입력해 주세요.</p>
           </div>
