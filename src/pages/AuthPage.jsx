@@ -1,12 +1,11 @@
 import { useState } from 'react'
-import { DEFAULT_USER } from '../data/mockUser'
 import { Button } from '../components/common/Button'
 import { TextField } from '../components/common/TextField'
 
-export function AuthPage({ onSubmit, onSkip, onFindPassword }) {
+export function AuthPage({ error, loading = false, onSubmit, onSkip, onFindPassword }) {
   const [form, setForm] = useState({
-    email: DEFAULT_USER.email,
-    password: 'careon-demo',
+    email: '',
+    password: '',
   })
 
   const updateField = (field, value) => {
@@ -21,10 +20,7 @@ export function AuthPage({ onSubmit, onSkip, onFindPassword }) {
           className="auth-form"
           onSubmit={(event) => {
             event.preventDefault()
-            onSubmit({
-              ...DEFAULT_USER,
-              email: form.email,
-            })
+            onSubmit(form)
           }}
         >
           <TextField label="이메일" type="email" value={form.email} onChange={(event) => updateField('email', event.target.value)} />
@@ -35,13 +31,14 @@ export function AuthPage({ onSubmit, onSkip, onFindPassword }) {
             onChange={(event) => updateField('password', event.target.value)}
           />
           <div className="auth-actions">
-            <Button size="large" className="full-width" type="submit">
-              로그인하기
+            <Button size="large" className="full-width" type="submit" disabled={loading}>
+              {loading ? '로그인 중...' : '로그인하기'}
             </Button>
             <Button variant="ghost" size="large" onClick={onSkip}>
               메인으로
             </Button>
           </div>
+          {error ? <p className="form-error">{error}</p> : null}
           <button className="text-button text-button--right" type="button" onClick={onFindPassword}>
             비밀번호 찾기
           </button>

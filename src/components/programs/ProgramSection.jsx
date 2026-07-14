@@ -1,7 +1,7 @@
 import { SUPPORT_TYPE_MAP } from '../../constants/supportTypes'
 import { ProgramCard } from './ProgramCard'
 
-export function ProgramSection({ typeId, programs, savedProgramIds = [], onOpenProgram }) {
+export function ProgramSection({ typeId, programs, savedProgramIds = [], onOpenProgram, onSaveProgram }) {
   const type = SUPPORT_TYPE_MAP[typeId]
 
   if (!programs.length) return null
@@ -20,6 +20,7 @@ export function ProgramSection({ typeId, programs, savedProgramIds = [], onOpenP
             program={program}
             saved={savedProgramIds.includes(program.id)}
             onOpen={onOpenProgram}
+            onSave={onSaveProgram}
           />
         ))}
       </div>

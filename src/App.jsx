@@ -2,7 +2,14 @@ import { useEffect, useMemo, useState } from 'react'
 import './App.css'
 import { REQUIRED_DIAGNOSIS_IDS } from './constants/diagnosisQuestions'
 import { MOCK_PROGRAMS } from './data/mockPrograms'
-import { DEFAULT_USER } from './data/mockUser'
+import {
+  api,
+  clearAccessToken,
+  getAccessToken,
+  normalizePolicy,
+  selectedTypeIdsToApiIds,
+  setAccessToken,
+} from './lib/api'
 import { Modal } from './components/common/Modal'
 import { PageShell } from './components/layout/PageShell'
 import { AuthPage } from './pages/AuthPage'
@@ -60,7 +67,9 @@ function App() {
   const [answers, setAnswers] = useState({})
   const [selectedTypes, setSelectedTypes] = useState(readSessionTypes)
   const [user, setUser] = useState(null)
+  const [programs, setPrograms] = useState(MOCK_PROGRAMS)
   const [savedProgramIds, setSavedProgramIds] = useState([])
+  const [savedPolicyIdByProgramId, setSavedPolicyIdByProgramId] = useState({})
   const [activeProgramId, setActiveProgramId] = useState(null)
   const [installPromptSkipCount, setInstallPromptSkipCount] = useState(0)
   const [installPromptInstalled, setInstallPromptInstalled] = useState(false)
@@ -69,14 +78,68 @@ function App() {
   const [authNextView, setAuthNextView] = useState('programs')
   const [analyzingNextView, setAnalyzingNextView] = useState('result')
   const [analyzingComplete, setAnalyzingComplete] = useState(false)
+  const [apiError, setApiError] = useState('')
+  const [apiLoading, setApiLoading] = useState(false)
 
   const eligible = REQUIRED_DIAGNOSIS_IDS.every((id) => answers[id] === true)
-  const activeProgram = MOCK_PROGRAMS.find((program) => program.id === activeProgramId)
+  const activeProgram = programs.find((program) => program.id === activeProgramId)
   const selectedPrograms = useMemo(() => {
     const types = selectedTypes.length ? selectedTypes : ['living', 'care', 'medical', 'mental']
-    return MOCK_PROGRAMS.filter((program) => types.includes(program.type))
+    return programs.filter((program) => types.includes(program.type))
+  }, [programs, selectedTypes])
+  const savedPrograms = programs.filter((program) => savedProgramIds.includes(program.id))
+
+  const refreshSavedPolicies = async () => {
+    const savedPolicies = await api.getSavedPolicies()
+    const normalized = savedPolicies.map(normalizePolicy)
+
+    setSavedProgramIds(normalized.map((program) => program.id))
+    setSavedPolicyIdByProgramId(Object.fromEntries(
+      normalized.map((program) => [program.id, program.savedPolicyId]),
+    ))
+    setPrograms((current) => {
+      const existingIds = new Set(current.map((program) => program.id))
+      return [...current, ...normalized.filter((program) => !existingIds.has(program.id))]
+    })
+  }
+
+  useEffect(() => {
+    let ignore = false
+
+    api.getAlternatives(selectedTypeIdsToApiIds(selectedTypes))
+      .then((alternatives) => {
+        if (!ignore) {
+          setPrograms(alternatives.map(normalizePolicy))
+        }
+      })
+      .catch(() => {
+        if (!ignore) {
+          setPrograms(MOCK_PROGRAMS)
+        }
+      })
+
+    return () => {
+      ignore = true
+    }
   }, [selectedTypes])
-  const savedPrograms = MOCK_PROGRAMS.filter((program) => savedProgramIds.includes(program.id))
+
+  useEffect(() => {
+    if (!getAccessToken()) return
+
+    const restoreSession = async () => {
+      try {
+        const me = await api.me()
+        setUser(me)
+        setInstallPromptInstalled(me.appInstalled)
+        setInstallPromptSkipCount(me.installPromptCount || 0)
+        await refreshSavedPolicies()
+      } catch {
+        clearAccessToken()
+      }
+    }
+
+    restoreSession()
+  }, [])
 
   useEffect(() => {
     if (view !== 'analyzing') return undefined
@@ -126,40 +189,114 @@ function App() {
     })
   }
 
-  const handleSaveProgram = (programId) => {
+  const handleSaveProgram = async (programId) => {
+    if (!user) return
+
     const isAlreadySaved = savedProgramIds.includes(programId)
+    setApiError('')
 
-    setSavedProgramIds((current) => {
-      if (current.includes(programId)) {
-        return current.filter((id) => id !== programId)
+    try {
+      if (isAlreadySaved) {
+        await api.cancelSavedPolicy(savedPolicyIdByProgramId[programId])
+      } else {
+        await api.savePolicy(programId)
       }
-      return [...current, programId]
-    })
 
-    if (!isAlreadySaved && !installPromptInstalled && installPromptSkipCount < 2) {
-      setShowInstallModal(true)
+      await refreshSavedPolicies()
+
+      if (!isAlreadySaved && !installPromptInstalled && installPromptSkipCount < 2) {
+        setShowInstallModal(true)
+      }
+    } catch (error) {
+      setApiError(error.message)
     }
   }
 
-  const handleInstallConfirmed = () => {
+  const handleInstallConfirmed = async () => {
+    if (user) {
+      try {
+        await api.updateAppInstallStatus(true)
+      } catch (error) {
+        setApiError(error.message)
+      }
+    }
     setInstallPromptInstalled(true)
     setShowInstallModal(false)
   }
 
-  const handleInstallDeferred = () => {
+  const handleInstallDeferred = async () => {
+    if (user) {
+      try {
+        await api.updateAppInstallStatus(false)
+      } catch (error) {
+        setApiError(error.message)
+      }
+    }
     setInstallPromptSkipCount((count) => Math.min(count + 1, 2))
     setShowInstallModal(false)
   }
 
-  const handleAuthSubmit = (formUser = DEFAULT_USER) => {
-    setUser({
-      name: formUser.name || DEFAULT_USER.name,
-      email: formUser.email || DEFAULT_USER.email,
-      district: formUser.district || DEFAULT_USER.district,
-    })
-    sessionStorage.setItem('careon:selectedTypes', JSON.stringify(selectedTypes))
-    navigate(shouldShowFollowupFirst() ? 'followup' : authNextView)
-    setAuthNextView('programs')
+  const handleLogin = async (form) => {
+    setApiLoading(true)
+    setApiError('')
+
+    try {
+      const response = await api.login(form)
+      setAccessToken(response.accessToken)
+      const me = await api.me()
+      setUser(me)
+      setInstallPromptInstalled(me.appInstalled)
+      setInstallPromptSkipCount(me.installPromptCount || 0)
+      await refreshSavedPolicies()
+      sessionStorage.setItem('careon:selectedTypes', JSON.stringify(selectedTypes))
+      navigate(shouldShowFollowupFirst() ? 'followup' : authNextView)
+      setAuthNextView('programs')
+    } catch (error) {
+      setApiError(error.message)
+    } finally {
+      setApiLoading(false)
+    }
+  }
+
+  const handleSignup = async (form) => {
+    setApiLoading(true)
+    setApiError('')
+
+    try {
+      const response = await api.signup({
+        name: form.name,
+        email: form.email,
+        password: form.password,
+        region: form.district,
+        termsAgreed: form.agreed,
+        interestPolicyTypeIds: selectedTypeIdsToApiIds(selectedTypes),
+      })
+      setAccessToken(response.accessToken)
+      const me = await api.me()
+      setUser(me)
+      navigate(shouldShowFollowupFirst() ? 'followup' : authNextView)
+      setAuthNextView('programs')
+    } catch (error) {
+      setApiError(error.message)
+    } finally {
+      setApiLoading(false)
+    }
+  }
+
+  const handleOpenProgram = async (programId) => {
+    setActiveProgramId(programId)
+    navigate('detail')
+
+    if (typeof programId !== 'number') return
+
+    try {
+      const detail = normalizePolicy(await api.getPolicyDetail(programId))
+      setPrograms((current) => current.map((program) => (
+        program.id === programId ? { ...program, ...detail } : program
+      )))
+    } catch (error) {
+      setApiError(error.message)
+    }
   }
 
   const handleStartFollowupAnalyzing = () => {
@@ -180,8 +317,40 @@ function App() {
   }
 
   const handleLogout = () => {
+    clearAccessToken()
     setUser(null)
+    setSavedProgramIds([])
+    setSavedPolicyIdByProgramId({})
     navigate('onboarding')
+  }
+
+  const handleUpdateUser = async (form) => {
+    setApiError('')
+    try {
+      await api.updateMe({
+        name: form.name,
+        email: form.email,
+        password: form.password || undefined,
+        region: form.district,
+      })
+      setUser(await api.me())
+    } catch (error) {
+      setApiError(error.message)
+    }
+  }
+
+  const handleDeleteAccount = async () => {
+    setApiError('')
+    try {
+      await api.withdraw()
+      clearAccessToken()
+      setUser(null)
+      setSavedProgramIds([])
+      setSavedPolicyIdByProgramId({})
+      navigate('onboarding')
+    } catch (error) {
+      setApiError(error.message)
+    }
   }
 
   const renderView = () => {
@@ -226,10 +395,7 @@ function App() {
             setAuthNextView('followup')
             navigate('signup')
           }}
-          onOpenProgram={(programId) => {
-            setActiveProgramId(programId)
-            navigate('detail')
-          }}
+          onOpenProgram={handleOpenProgram}
           onSaveProgram={handleSaveProgram}
           onRestart={handleRestart}
         />
@@ -248,7 +414,9 @@ function App() {
     if (view === 'auth') {
       return (
         <AuthPage
-          onSubmit={handleAuthSubmit}
+          error={apiError}
+          loading={apiLoading}
+          onSubmit={handleLogin}
           onSkip={() => navigate('onboarding')}
           onFindPassword={() => navigate('passwordReset')}
         />
@@ -258,7 +426,9 @@ function App() {
     if (view === 'signup') {
       return (
         <SignupPage
-          onSubmit={handleAuthSubmit}
+          error={apiError}
+          loading={apiLoading}
+          onSubmit={handleSignup}
           onLogin={() => navigate('auth')}
         />
       )
@@ -267,6 +437,7 @@ function App() {
     if (view === 'passwordReset') {
       return (
         <PasswordResetPage
+          onSendResetLink={api.sendPasswordResetLink}
           onBack={() => navigate('auth')}
           onComplete={() => navigate('auth')}
         />
@@ -276,16 +447,13 @@ function App() {
     if (view === 'programs') {
       return (
         <ProgramListPage
-          programs={MOCK_PROGRAMS}
+          programs={programs}
           selectedTypes={selectedTypes}
           savedProgramIds={savedProgramIds}
           user={user}
           showSideChat={showSideChat}
           onOpenChat={() => navigate('programChat')}
-          onOpenProgram={(programId) => {
-            setActiveProgramId(programId)
-            navigate('detail')
-          }}
+          onOpenProgram={handleOpenProgram}
           onSaveProgram={handleSaveProgram}
         />
       )
@@ -319,13 +487,10 @@ function App() {
         <MyPage
           user={user}
           savedPrograms={savedPrograms}
-          onUpdateUser={setUser}
+          error={apiError}
+          onUpdateUser={handleUpdateUser}
           onLogout={handleLogout}
-          onDeleteAccount={() => {
-            setUser(null)
-            setSavedProgramIds([])
-            navigate('onboarding')
-          }}
+          onDeleteAccount={handleDeleteAccount}
           onLogin={() => navigate('auth')}
         />
       )

@@ -3,7 +3,7 @@ import { SEOUL_DISTRICTS } from '../constants/seoulDistricts'
 import { TextField } from '../components/common/TextField'
 import { Button } from '../components/common/Button'
 
-export function MyPage({ user, savedPrograms, onUpdateUser, onLogout, onDeleteAccount, onLogin }) {
+export function MyPage({ user, savedPrograms, error, onUpdateUser, onLogout, onDeleteAccount, onLogin }) {
   const [form, setForm] = useState(user || { name: '', email: '', district: '', password: '', confirmPassword: '' })
 
   if (!user) {
@@ -54,6 +54,7 @@ export function MyPage({ user, savedPrograms, onUpdateUser, onLogout, onDeleteAc
             <Button variant="secondary" onClick={onLogout}>로그아웃</Button>
             <Button variant="danger" onClick={onDeleteAccount}>회원 탈퇴</Button>
           </div>
+          {error ? <p className="form-error">{error}</p> : null}
         </div>
       </div>
       <div className="mypage__panel">

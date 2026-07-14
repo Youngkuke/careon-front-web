@@ -1,10 +1,9 @@
 import { useState } from 'react'
 import { SEOUL_DISTRICTS } from '../constants/seoulDistricts'
-import { DEFAULT_USER } from '../data/mockUser'
 import { Button } from '../components/common/Button'
 import { TextField } from '../components/common/TextField'
 
-export function SignupPage({ onSubmit, onLogin }) {
+export function SignupPage({ error, loading = false, onSubmit, onLogin }) {
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -18,7 +17,8 @@ export function SignupPage({ onSubmit, onLogin }) {
     setForm((current) => ({ ...current, [field]: value }))
   }
 
-  const canSubmit = form.name && form.email && form.password && form.confirmPassword && form.district && form.agreed
+  const passwordMatches = !form.confirmPassword || form.password === form.confirmPassword
+  const canSubmit = form.name && form.email && form.password && form.confirmPassword && form.district && form.agreed && passwordMatches
 
   return (
     <section className="auth-page">
@@ -29,12 +29,7 @@ export function SignupPage({ onSubmit, onLogin }) {
           onSubmit={(event) => {
             event.preventDefault()
             if (!canSubmit) return
-            onSubmit({
-              ...DEFAULT_USER,
-              name: form.name,
-              email: form.email,
-              district: form.district,
-            })
+            onSubmit(form)
           }}
         >
           <TextField label="이름 또는 닉네임" value={form.name} onChange={(event) => updateField('name', event.target.value)} />
@@ -45,6 +40,7 @@ export function SignupPage({ onSubmit, onLogin }) {
             type="password"
             value={form.confirmPassword}
             onChange={(event) => updateField('confirmPassword', event.target.value)}
+            helperText={passwordMatches ? '' : '비밀번호가 일치하지 않아요.'}
           />
           <label className="field">
             <span>거주 지역</span>
@@ -64,13 +60,14 @@ export function SignupPage({ onSubmit, onLogin }) {
             <span>이용약관 및 개인정보처리방침 동의 (필수)</span>
           </label>
           <div className="auth-actions">
-            <Button size="large" className="full-width" type="submit" disabled={!canSubmit}>
-              회원가입하기
+            <Button size="large" className="full-width" type="submit" disabled={!canSubmit || loading}>
+              {loading ? '가입 중...' : '회원가입하기'}
             </Button>
             <Button variant="ghost" size="large" onClick={onLogin}>
               로그인으로
             </Button>
           </div>
+          {error ? <p className="form-error">{error}</p> : null}
         </form>
       </div>
     </section>

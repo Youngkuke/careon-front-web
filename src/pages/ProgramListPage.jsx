@@ -14,6 +14,7 @@ export function ProgramListPage({
   user,
   onOpenChat,
   onOpenProgram,
+  onSaveProgram,
 }) {
   const orderedTypes = selectedTypes.length ? selectedTypes : SUPPORT_TYPE_ORDER
   const orderedPrograms = useMemo(() => (
@@ -40,7 +41,7 @@ export function ProgramListPage({
           {savedPrograms.length ? (
             <div className="program-list program-list--compact">
               {savedPrograms.map((program) => (
-                <ProgramCard key={program.id} program={program} saved onOpen={onOpenProgram} />
+                <ProgramCard key={program.id} program={program} saved onOpen={onOpenProgram} onSave={onSaveProgram} />
               ))}
             </div>
           ) : (
@@ -62,6 +63,7 @@ export function ProgramListPage({
               programs={orderedPrograms.filter((program) => program.type === typeId)}
               savedProgramIds={savedProgramIds}
               onOpenProgram={onOpenProgram}
+              onSaveProgram={onSaveProgram}
             />
           ))}
         </div>

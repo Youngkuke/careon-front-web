@@ -2,9 +2,11 @@ import { useState } from 'react'
 import { Button } from '../components/common/Button'
 import { TextField } from '../components/common/TextField'
 
-export function PasswordResetPage({ onBack, onComplete }) {
+export function PasswordResetPage({ onSendResetLink, onBack, onComplete }) {
   const [email, setEmail] = useState('')
   const [sent, setSent] = useState(false)
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
   return (
     <section className="auth-page">
@@ -20,7 +22,12 @@ export function PasswordResetPage({ onBack, onComplete }) {
             className="auth-form"
             onSubmit={(event) => {
               event.preventDefault()
-              setSent(true)
+              setLoading(true)
+              setError('')
+              onSendResetLink(email)
+                .then(() => setSent(true))
+                .catch((requestError) => setError(requestError.message))
+                .finally(() => setLoading(false))
             }}
           >
             <TextField
@@ -31,9 +38,12 @@ export function PasswordResetPage({ onBack, onComplete }) {
               placeholder="가입한 이메일을 입력해 주세요"
             />
             <div className="auth-actions">
-              <Button size="large" className="full-width" type="submit">재설정 링크 받기</Button>
+              <Button size="large" className="full-width" type="submit" disabled={loading}>
+                {loading ? '발송 중...' : '재설정 링크 받기'}
+              </Button>
               <Button variant="ghost" size="large" onClick={onBack}>로그인으로</Button>
             </div>
+            {error ? <p className="form-error">{error}</p> : null}
           </form>
         )}
       </div>
