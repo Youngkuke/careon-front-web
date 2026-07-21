@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import './App.css'
 import { REQUIRED_DIAGNOSIS_IDS } from './constants/diagnosisQuestions'
 import {
@@ -62,6 +62,12 @@ const shouldShowFollowupFirst = () => (
   && localStorage.getItem(FOLLOWUP_COMPLETED_KEY) !== 'true'
 )
 
+const needsFollowupDiagnosis = (loginResponse, me) => (
+  loginResponse?.diagnosisCompleted === false
+  || me?.diagnosisCompleted === false
+  || shouldShowFollowupFirst()
+)
+
 const toApiPolicyId = (programId) => {
   const policyId = Number(programId)
   return Number.isSafeInteger(policyId) ? policyId : null
@@ -98,18 +104,18 @@ function App() {
   const [analyzingComplete, setAnalyzingComplete] = useState(false)
   const [apiError, setApiError] = useState('')
   const [apiLoading, setApiLoading] = useState(false)
+  const [alternativePrograms, setAlternativePrograms] = useState([])
+  const [alternativesLoading, setAlternativesLoading] = useState(false)
+  const [alternativesError, setAlternativesError] = useState('')
 
   const eligible = REQUIRED_DIAGNOSIS_IDS.every((id) => answers[id] === true)
   const activeProgram = programs.find((program) => program.id === activeProgramId)
-  const selectedPrograms = useMemo(() => {
-    const types = selectedTypes.length ? selectedTypes : ['living', 'care', 'medical', 'mental']
-    return programs.filter((program) => types.includes(program.type))
-  }, [programs, selectedTypes])
   const clearUserSession = useCallback(() => {
     clearAccessToken()
     setUser(null)
     setSavedProgramIds([])
     setSavedPolicyIdByProgramId({})
+    setPrograms([])
   }, [])
 
   const handleAuthExpired = useCallback(() => {
@@ -135,18 +141,14 @@ function App() {
   useEffect(() => {
     let ignore = false
 
-    const loadPrograms = user
-      ? api.getMatchedPolicies()
-        .then((groups) => normalizeMatchedPolicyGroups(groups))
-        .catch((error) => {
-          if (error.status === 401) {
-            throw error
-          }
-          return api.getAlternatives(selectedTypeIdsToApiIds(selectedTypes))
-            .then((alternatives) => alternatives.map(normalizePolicy))
-        })
-      : api.getAlternatives(selectedTypeIdsToApiIds(selectedTypes))
-        .then((alternatives) => alternatives.map(normalizePolicy))
+    if (!user || user.diagnosisCompleted !== true) {
+      return () => {
+        ignore = true
+      }
+    }
+
+    const loadPrograms = api.getMatchedPolicies()
+      .then((groups) => normalizeMatchedPolicyGroups(groups))
 
     loadPrograms
       .then((nextPrograms) => {
@@ -168,7 +170,22 @@ function App() {
     return () => {
       ignore = true
     }
-  }, [handleAuthExpired, selectedTypes, user])
+  }, [handleAuthExpired, user])
+
+  const loadAlternativePrograms = useCallback(async () => {
+    setAlternativesLoading(true)
+    setAlternativesError('')
+
+    try {
+      const alternatives = await api.getAlternatives(selectedTypeIdsToApiIds(selectedTypes))
+      setAlternativePrograms(alternatives.map(normalizePolicy))
+    } catch (error) {
+      setAlternativePrograms([])
+      setAlternativesError(error.message)
+    } finally {
+      setAlternativesLoading(false)
+    }
+  }, [selectedTypes])
 
   useEffect(() => {
     if (!getAccessToken()) return
@@ -181,7 +198,7 @@ function App() {
         setInstallPromptSkipCount(me.installPromptCount || 0)
         await refreshSavedPolicies()
         if (!isPasswordResetUrl()) {
-          setView('programs')
+          setView(me.diagnosisCompleted === false ? 'followup' : 'programs')
         }
       } catch {
         clearAccessToken()
@@ -227,6 +244,11 @@ function App() {
       setActiveProgramId(null)
     }
     setView(nextView)
+  }
+
+  const navigateWithClearedError = (nextView) => {
+    setApiError('')
+    navigate(nextView)
   }
 
   const handleAnswer = (questionId, value) => {
@@ -321,7 +343,7 @@ function App() {
       setInstallPromptSkipCount(me.installPromptCount || 0)
       await refreshSavedPolicies()
       sessionStorage.setItem('careon:selectedTypes', JSON.stringify(selectedTypes))
-      const nextView = shouldShowFollowupFirst() ? 'followup' : authNextView
+      const nextView = needsFollowupDiagnosis(response, me) ? 'followup' : authNextView
       if (nextView === 'programs') {
         setShowRevisitModal(true)
       }
@@ -355,7 +377,7 @@ function App() {
       setAccessToken(response.accessToken)
       const me = await api.me()
       setUser(me)
-      navigate(shouldShowFollowupFirst() ? 'followup' : authNextView)
+      navigate(needsFollowupDiagnosis(response, me) ? 'followup' : authNextView)
       setAuthNextView('programs')
     } catch (error) {
       setApiError(error.message)
@@ -433,8 +455,6 @@ function App() {
     try {
       await api.updateMe({
         name: form.name,
-        currentPassword: form.currentPassword,
-        newPassword: form.newPassword || undefined,
         password: form.newPassword || undefined,
         region: form.district,
       })
@@ -493,22 +513,24 @@ function App() {
           eligible={eligible}
           answers={answers}
           selectedTypes={selectedTypes}
-          alternativePrograms={selectedPrograms}
+          alternativePrograms={alternativePrograms}
+          alternativesLoading={alternativesLoading}
+          alternativesError={alternativesError}
           savedProgramIds={savedProgramIds}
+          onLoadAlternatives={loadAlternativePrograms}
           onAuth={() => {
             localStorage.setItem(FOLLOWUP_PENDING_KEY, 'true')
             localStorage.removeItem(FOLLOWUP_COMPLETED_KEY)
             setAuthNextView('followup')
-            navigate('auth')
+            navigateWithClearedError('auth')
           }}
           onSignup={() => {
             localStorage.setItem(FOLLOWUP_PENDING_KEY, 'true')
             localStorage.removeItem(FOLLOWUP_COMPLETED_KEY)
             setAuthNextView('followup')
-            navigate('signup')
+            navigateWithClearedError('signup')
           }}
           onOpenProgram={handleOpenProgram}
-          onSaveProgram={handleSaveProgram}
           onRestart={handleRestart}
         />
       )
@@ -529,8 +551,8 @@ function App() {
           error={apiError}
           loading={apiLoading}
           onSubmit={handleLogin}
-          onSkip={() => navigate('onboarding')}
-          onFindPassword={() => navigate('passwordReset')}
+          onSkip={() => navigateWithClearedError('onboarding')}
+          onFindPassword={() => navigateWithClearedError('passwordReset')}
         />
       )
     }
@@ -541,7 +563,7 @@ function App() {
           error={apiError}
           loading={apiLoading}
           onSubmit={handleSignup}
-          onLogin={() => navigate('auth')}
+          onLogin={() => navigateWithClearedError('auth')}
         />
       )
     }
@@ -553,11 +575,11 @@ function App() {
           onResetPassword={api.resetPassword}
           onBack={() => {
             clearPasswordResetUrl()
-            navigate('auth')
+            navigateWithClearedError('auth')
           }}
           onComplete={() => {
             clearPasswordResetUrl()
-            navigate('auth')
+            navigateWithClearedError('auth')
           }}
         />
       )
@@ -610,7 +632,7 @@ function App() {
           onUpdateUser={handleUpdateUser}
           onLogout={handleLogout}
           onDeleteAccount={handleDeleteAccount}
-          onLogin={() => navigate('auth')}
+          onLogin={() => navigateWithClearedError('auth')}
         />
       )
     }
@@ -620,7 +642,7 @@ function App() {
         onStart={() => navigate('diagnosis')}
         onLogin={() => {
           setAuthNextView('programs')
-          navigate('auth')
+          navigateWithClearedError('auth')
         }}
       />
     )

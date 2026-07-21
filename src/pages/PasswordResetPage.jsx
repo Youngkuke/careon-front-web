@@ -82,6 +82,7 @@ export function PasswordResetPage({ onSendResetLink, onResetPassword, onBack, on
               value={passwordForm.confirmPassword}
               onChange={(event) => updatePasswordField('confirmPassword', event.target.value)}
               helperText={passwordMatches ? '' : '비밀번호가 일치하지 않아요.'}
+              helperTone="error"
               autoComplete="new-password"
             />
             <div className="auth-actions">

@@ -969,6 +969,11 @@ main {
   font-weight: 500;
 }
 
+.field .field__helper--error {
+  color: #d92d20;
+  font-weight: 700;
+}
+
 .check-field {
   padding: 1rem 1.125rem;
   border: 0.09375rem solid rgba(14, 159, 114, 0.16);
