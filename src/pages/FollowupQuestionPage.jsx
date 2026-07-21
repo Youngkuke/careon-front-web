@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { SideChatPanel } from '../components/layout/SideChatPanel'
-import { api } from '../lib/api'
+import { api, normalizePolicy } from '../lib/api'
 
 export function FollowupQuestionPage({ user, onAuthExpired, onComplete }) {
   const [sessionId, setSessionId] = useState('')
@@ -62,8 +62,15 @@ export function FollowupQuestionPage({ user, onAuthExpired, onComplete }) {
     const response = await api.sendChatMessage(sessionId, message)
 
     if (response.phase === 'ready_to_match') {
-      await api.matchChatSession(sessionId)
-      await onComplete()
+      const matchResult = await api.matchChatSession(sessionId)
+      const policyIds = matchResult.matches
+        .map((match) => match.policyId)
+        .filter((policyId) => Number.isSafeInteger(Number(policyId)))
+      const matchedPrograms = policyIds.length
+        ? (await api.getPoliciesByIds(policyIds)).map(normalizePolicy)
+        : []
+
+      await onComplete(matchedPrograms)
     }
 
     if (response.phase === 'done') {
