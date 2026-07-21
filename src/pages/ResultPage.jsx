@@ -40,11 +40,13 @@ export function ResultPage({
   answers,
   selectedTypes,
   alternativePrograms,
+  alternativesLoading,
+  alternativesError,
   savedProgramIds,
+  onLoadAlternatives,
   onAuth,
   onSignup,
   onOpenProgram,
-  onSaveProgram,
 }) {
   const [showSkippedPrograms, setShowSkippedPrograms] = useState(false)
   const logRef = useRef(null)
@@ -52,7 +54,7 @@ export function ResultPage({
   const ineligibleMessage = failedQuestions.length > 1
     ? MULTIPLE_INELIGIBLE_MESSAGE
     : INELIGIBLE_MESSAGES[failedQuestions[0]?.id]
-  const showAlternativeCards = !(failedQuestions.length === 1 && failedQuestions[0]?.id === 'lifeDifficulty')
+  const showAlternativeCards = failedQuestions.length > 0
   const selectedTypeLabels = selectedTypes
     .map((typeId) => SUPPORT_TYPE_MAP[typeId]?.shortLabel)
     .filter(Boolean)
@@ -67,6 +69,32 @@ export function ResultPage({
       behavior: 'smooth',
     })
   }, [showSkippedPrograms])
+
+  useEffect(() => {
+    if (eligible || !showAlternativeCards) return
+    onLoadAlternatives()
+  }, [eligible, onLoadAlternatives, showAlternativeCards])
+
+  useEffect(() => {
+    if (!showSkippedPrograms) return
+    onLoadAlternatives()
+  }, [onLoadAlternatives, showSkippedPrograms])
+
+  const renderAlternativeState = () => {
+    if (alternativesLoading) {
+      return <p className="empty-state">대체 제도를 불러오고 있어요.</p>
+    }
+
+    if (alternativesError) {
+      return <p className="form-error">{alternativesError}</p>
+    }
+
+    if (!alternativePrograms.length) {
+      return <p className="empty-state">표시할 대체 제도가 없어요.</p>
+    }
+
+    return null
+  }
 
   if (eligible) {
     return (
@@ -106,13 +134,12 @@ export function ResultPage({
                   <strong>괜찮아요. 선택하신 유형을 바탕으로 맞을 것 같은 제도들을 찾아봤어요.</strong>
                 </ChatBubble>
                 <div className="alternative-list alternative-list--chat">
-                  {alternativePrograms.map((program) => (
+                  {renderAlternativeState() || alternativePrograms.map((program) => (
                     <ProgramCard
                       key={program.id}
                       program={program}
                       saved={savedProgramIds.includes(program.id)}
                       onOpen={onOpenProgram}
-                      onSave={onSaveProgram}
                     />
                   ))}
                 </div>
@@ -141,7 +168,7 @@ export function ResultPage({
             </ChatBubble>
             {showAlternativeCards ? (
               <div className="alternative-list alternative-list--chat">
-                {alternativePrograms.map((program) => (
+                {renderAlternativeState() || alternativePrograms.map((program) => (
                   <AlternativeWelfareCard key={program.id} program={program} />
                 ))}
               </div>

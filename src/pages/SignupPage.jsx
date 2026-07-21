@@ -41,6 +41,7 @@ export function SignupPage({ error, loading = false, onSubmit, onLogin }) {
             value={form.confirmPassword}
             onChange={(event) => updateField('confirmPassword', event.target.value)}
             helperText={passwordMatches ? '' : '비밀번호가 일치하지 않아요.'}
+            helperTone="error"
           />
           <label className="field">
             <span>거주 지역</span>
