@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { SUPPORT_TYPE_MAP } from '../../constants/supportTypes'
 import { Button } from '../common/Button'
 import { Modal } from '../common/Modal'
+import { api } from '../../lib/api'
 
 const DOCUMENT_GUIDES = {
   신분증: {
@@ -126,6 +127,10 @@ const DOCUMENT_GUIDES = {
 }
 
 const getDocumentGuide = (document, program) => {
+  const detail = (program.documentDetails || []).find((item) => (
+    item?.document_name === document || item?.name === document || item?.title === document
+  ))
+  const issuer = detail?.issuers?.[0]
   const guide = DOCUMENT_GUIDES[document] || {
     description: `${document}는 이 제도 신청 과정에서 확인이 필요한 서류예요.`,
     steps: [
@@ -138,6 +143,9 @@ const getDocumentGuide = (document, program) => {
 
   return {
     ...guide,
+    description: issuer?.issuer_name
+      ? `${guide.description} ${issuer.issuer_name}에서 발급 정보를 확인할 수 있어요.`
+      : guide.description,
     url: guide.url === 'program' ? program.url : guide.url,
   }
 }
@@ -145,6 +153,11 @@ const getDocumentGuide = (document, program) => {
 export function ProgramDetailPanel({ program, saved, user, onBack, onSave }) {
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const [selectedDocument, setSelectedDocument] = useState(null)
+  const [translation, setTranslation] = useState('')
+  const [translationLoading, setTranslationLoading] = useState(false)
+  const [benefitValue, setBenefitValue] = useState(program?.wasBenefited || false)
+  const [actionMessage, setActionMessage] = useState('')
+  const [actionError, setActionError] = useState('')
 
   if (!program) return null
 
@@ -156,6 +169,9 @@ export function ProgramDetailPanel({ program, saved, user, onBack, onSave }) {
     ['문의처', program.agency],
   ]
   const selectedDocumentGuide = selectedDocument ? getDocumentGuide(selectedDocument, program) : null
+  const selectedDocumentDetail = selectedDocument ? (program.documentDetails || []).find((item) => (
+    item?.document_name === selectedDocument || item?.name === selectedDocument || item?.title === selectedDocument
+  )) : null
 
   const handleSaveClick = () => {
     if (saved) {
@@ -169,6 +185,60 @@ export function ProgramDetailPanel({ program, saved, user, onBack, onSave }) {
   const handleConfirmCancel = () => {
     setShowCancelConfirm(false)
     onSave(program.id)
+  }
+
+  const handleTranslate = async () => {
+    setTranslationLoading(true)
+    setActionError('')
+    setActionMessage('')
+
+    try {
+      const data = await api.translatePolicy(program.id)
+      setTranslation(data.explanation || '')
+    } catch (error) {
+      setActionError(error.message)
+    } finally {
+      setTranslationLoading(false)
+    }
+  }
+
+  const handleBenefitChange = async (nextValue) => {
+    if (!program.matchedPolicyId) return
+
+    setActionError('')
+    setActionMessage('')
+
+    try {
+      await api.updateMatchedPolicyBenefit(program.matchedPolicyId, nextValue)
+      setBenefitValue(nextValue)
+      setActionMessage('수혜 여부가 저장되었어요.')
+    } catch (error) {
+      setActionError(error.message)
+    }
+  }
+
+  const handleSaveDocumentHistory = async () => {
+    const documentId = selectedDocumentDetail?.document_id || selectedDocumentDetail?.documentId
+    if (!documentId) {
+      setActionError('서류 ID가 있는 항목만 이력으로 기록할 수 있어요.')
+      return
+    }
+
+    setActionError('')
+    setActionMessage('')
+
+    try {
+      await api.addDocumentHistory({
+        documentId,
+        policyId: program.id,
+        directUtter: false,
+        confirmedByUser: true,
+      })
+      setActionMessage('서류 이력에 기록했어요.')
+      setSelectedDocument(null)
+    } catch (error) {
+      setActionError(error.message)
+    }
   }
 
   return (
@@ -188,6 +258,26 @@ export function ProgramDetailPanel({ program, saved, user, onBack, onSave }) {
         <p>{program.agency}</p>
       </header>
       <p className="detail-panel__summary">{program.summary}</p>
+      <section className="detail-section detail-section--tools">
+        <div className="detail-tool-row">
+          <Button type="button" variant="secondary" onClick={handleTranslate} disabled={translationLoading}>
+            {translationLoading ? '풀이 중...' : '쉬운 설명 보기'}
+          </Button>
+          {program.matchedPolicyId ? (
+            <label className="inline-check">
+              <input
+                type="checkbox"
+                checked={benefitValue}
+                onChange={(event) => handleBenefitChange(event.target.checked)}
+              />
+              <span>이미 이용한 제도</span>
+            </label>
+          ) : null}
+        </div>
+        {translation ? <p className="detail-translation">{translation}</p> : null}
+        {actionMessage ? <p className="form-success">{actionMessage}</p> : null}
+        {actionError ? <p className="form-error">{actionError}</p> : null}
+      </section>
       <dl className="detail-list">
         {rows.map(([label, value]) => (
           <div key={label}>
@@ -232,6 +322,11 @@ export function ProgramDetailPanel({ program, saved, user, onBack, onSave }) {
               ))}
             </ol>
             <div className="document-guide-dialog__actions">
+              {user ? (
+                <Button variant="secondary" size="small" onClick={handleSaveDocumentHistory}>
+                  서류 이력에 기록
+                </Button>
+              ) : null}
               {selectedDocumentGuide.url ? (
                 <a href={selectedDocumentGuide.url} target="_blank" rel="noreferrer">
                   {selectedDocumentGuide.linkLabel || '공식 링크 열기'}
