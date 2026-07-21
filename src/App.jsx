@@ -395,14 +395,33 @@ function App() {
     try {
       const detail = normalizePolicy(await api.getPolicyDetail(programId))
       setPrograms((current) => current.map((program) => (
-        program.id === programId ? { ...program, ...detail } : program
+        program.id === programId ? {
+          ...program,
+          ...detail,
+          matchedPolicyId: detail.matchedPolicyId ?? program.matchedPolicyId,
+          matchGroup: detail.matchGroup ?? program.matchGroup,
+          wasBenefited: detail.wasBenefited ?? program.wasBenefited,
+          savedPolicyId: detail.savedPolicyId ?? program.savedPolicyId,
+        } : program
       )))
     } catch (error) {
       setApiError(error.message)
     }
   }
 
-  const handleStartFollowupAnalyzing = () => {
+  const handleStartFollowupAnalyzing = async () => {
+    try {
+      const me = await api.me()
+      setUser(me)
+      setInstallPromptInstalled(me.appInstalled)
+      setInstallPromptSkipCount(me.installPromptCount || 0)
+    } catch (error) {
+      if (error.status === 401) {
+        handleAuthExpired()
+        return
+      }
+    }
+
     localStorage.setItem(FOLLOWUP_COMPLETED_KEY, 'true')
     localStorage.removeItem(FOLLOWUP_PENDING_KEY)
     setAnalyzingNextView('programs')
@@ -539,7 +558,8 @@ function App() {
     if (view === 'followup') {
       return (
         <FollowupQuestionPage
-          userName={user?.name}
+          user={user}
+          onAuthExpired={handleAuthExpired}
           onComplete={handleStartFollowupAnalyzing}
         />
       )
