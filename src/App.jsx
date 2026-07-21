@@ -87,6 +87,7 @@ function App() {
   const [installPromptSkipCount, setInstallPromptSkipCount] = useState(0)
   const [installPromptInstalled, setInstallPromptInstalled] = useState(false)
   const [showInstallModal, setShowInstallModal] = useState(false)
+  const [showRevisitModal, setShowRevisitModal] = useState(false)
   const [showSideChat, setShowSideChat] = useState(true)
   const [authNextView, setAuthNextView] = useState('programs')
   const [analyzingNextView, setAnalyzingNextView] = useState('result')
@@ -100,8 +101,6 @@ function App() {
     const types = selectedTypes.length ? selectedTypes : ['living', 'care', 'medical', 'mental']
     return programs.filter((program) => types.includes(program.type))
   }, [programs, selectedTypes])
-  const savedPrograms = programs.filter((program) => savedProgramIds.includes(program.id))
-
   const clearUserSession = useCallback(() => {
     clearAccessToken()
     setUser(null)
@@ -176,6 +175,9 @@ function App() {
         setInstallPromptInstalled(me.appInstalled)
         setInstallPromptSkipCount(me.installPromptCount || 0)
         await refreshSavedPolicies()
+        if (!isPasswordResetUrl()) {
+          setView('programs')
+        }
       } catch {
         clearAccessToken()
       }
@@ -308,7 +310,16 @@ function App() {
       setInstallPromptSkipCount(me.installPromptCount || 0)
       await refreshSavedPolicies()
       sessionStorage.setItem('careon:selectedTypes', JSON.stringify(selectedTypes))
-      navigate(shouldShowFollowupFirst() ? 'followup' : authNextView)
+      const nextView = shouldShowFollowupFirst() ? 'followup' : authNextView
+      if (nextView === 'programs') {
+        setShowRevisitModal(true)
+      }
+      if (nextView === 'programs') {
+        setActiveProgramId(null)
+        setView('programs')
+      } else {
+        navigate(nextView)
+      }
       setAuthNextView('programs')
     } catch (error) {
       setApiError(error.message)
@@ -366,6 +377,21 @@ function App() {
     navigate('analyzing')
   }
 
+  const handleRevisitNoChange = () => {
+    setShowRevisitModal(false)
+  }
+
+  const handleRevisitChanged = () => {
+    localStorage.setItem(FOLLOWUP_PENDING_KEY, 'true')
+    localStorage.removeItem(FOLLOWUP_COMPLETED_KEY)
+    setShowRevisitModal(false)
+    navigate('followup')
+  }
+
+  const handleRevisitSkipToday = () => {
+    setShowRevisitModal(false)
+  }
+
   const handleRestart = () => {
     setAnswers({})
     setSelectedTypes([])
@@ -383,19 +409,33 @@ function App() {
   const handleUpdateUser = async (form) => {
     setApiError('')
     try {
+      const verification = await api.login({
+        email: form.email,
+        password: form.currentPassword,
+      })
+      setAccessToken(verification.accessToken)
+    } catch {
+      setApiError('현재 비밀번호가 일치하지 않아요.')
+      return false
+    }
+
+    try {
       await api.updateMe({
         name: form.name,
-        email: form.email,
-        password: form.password || undefined,
+        currentPassword: form.currentPassword,
+        newPassword: form.newPassword || undefined,
+        password: form.newPassword || undefined,
         region: form.district,
       })
       setUser(await api.me())
+      return true
     } catch (error) {
       if (error.status === 401) {
         handleAuthExpired()
       } else {
         setApiError(error.message)
       }
+      return false
     }
   }
 
@@ -554,7 +594,6 @@ function App() {
       return (
         <MyPage
           user={user}
-          savedPrograms={savedPrograms}
           error={apiError}
           onUpdateUser={handleUpdateUser}
           onLogout={handleLogout}
@@ -597,6 +636,22 @@ function App() {
         <p>
           지금 설치하면 신청 마감일이 다가올 때<br />
           놓치지 않도록 알려드려요
+        </p>
+      </Modal>
+      <Modal
+        open={showRevisitModal}
+        title="혹시 돌봄 상황이 바뀌었나요?"
+        primaryLabel="변동 없어요"
+        secondaryLabel="상황이 바뀌었어요"
+        tertiaryLabel="오늘 하루 안보기"
+        className="revisit-modal"
+        onPrimary={handleRevisitNoChange}
+        onSecondary={handleRevisitChanged}
+        onTertiary={handleRevisitSkipToday}
+      >
+        <p>
+          바뀐 가족 구성, 돌봄 강도, 소득이나 거주지가 있다면<br />
+          다시 여쭤보고 맞춤 제도를 새로 살펴볼게요.
         </p>
       </Modal>
     </PageShell>
