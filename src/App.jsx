@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import './App.css'
 import { REQUIRED_DIAGNOSIS_IDS } from './constants/diagnosisQuestions'
-import { MOCK_PROGRAMS } from './data/mockPrograms'
 import {
   api,
   clearAccessToken,
@@ -63,6 +62,11 @@ const shouldShowFollowupFirst = () => (
   && localStorage.getItem(FOLLOWUP_COMPLETED_KEY) !== 'true'
 )
 
+const toApiPolicyId = (programId) => {
+  const policyId = Number(programId)
+  return Number.isSafeInteger(policyId) ? policyId : null
+}
+
 const isPasswordResetUrl = () => (
   window.location.pathname === '/reset-password'
   || new URLSearchParams(window.location.search).has('token')
@@ -80,7 +84,7 @@ function App() {
   const [answers, setAnswers] = useState({})
   const [selectedTypes, setSelectedTypes] = useState(readSessionTypes)
   const [user, setUser] = useState(null)
-  const [programs, setPrograms] = useState(MOCK_PROGRAMS)
+  const [programs, setPrograms] = useState([])
   const [savedProgramIds, setSavedProgramIds] = useState([])
   const [savedPolicyIdByProgramId, setSavedPolicyIdByProgramId] = useState({})
   const [activeProgramId, setActiveProgramId] = useState(null)
@@ -155,7 +159,8 @@ function App() {
           if (error.status === 401) {
             handleAuthExpired()
           } else {
-            setPrograms(MOCK_PROGRAMS)
+            setPrograms([])
+            setApiError(error.message)
           }
         }
       })
@@ -241,6 +246,12 @@ function App() {
   const handleSaveProgram = async (programId) => {
     if (!user) return
 
+    const policyId = toApiPolicyId(programId)
+    if (policyId === null) {
+      setApiError('현재 표시된 제도는 저장할 수 없어요. 맞춤 제도를 다시 불러온 뒤 저장해 주세요.')
+      return
+    }
+
     const isAlreadySaved = savedProgramIds.includes(programId)
     setApiError('')
 
@@ -248,7 +259,7 @@ function App() {
       if (isAlreadySaved) {
         await api.cancelSavedPolicy(savedPolicyIdByProgramId[programId])
       } else {
-        await api.savePolicy(programId)
+        await api.savePolicy(policyId)
       }
 
       await refreshSavedPolicies()
@@ -559,6 +570,7 @@ function App() {
           selectedTypes={selectedTypes}
           savedProgramIds={savedProgramIds}
           user={user}
+          error={apiError}
           showSideChat={showSideChat}
           onOpenChat={() => navigate('programChat')}
           onOpenProgram={handleOpenProgram}
