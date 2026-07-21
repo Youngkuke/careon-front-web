@@ -124,7 +124,7 @@ function App() {
     setView('auth')
   }, [clearUserSession])
 
-  const refreshSavedPolicies = async () => {
+  const refreshSavedPolicies = useCallback(async () => {
     const savedPolicies = await api.getSavedPolicies()
     const normalized = savedPolicies.map(normalizePolicy)
 
@@ -136,7 +136,19 @@ function App() {
       const existingIds = new Set(current.map((program) => program.id))
       return [...current, ...normalized.filter((program) => !existingIds.has(program.id))]
     })
-  }
+  }, [])
+
+  const refreshMatchedPolicies = useCallback(async () => {
+    const groups = await api.getMatchedPolicies()
+    const nextPrograms = normalizeMatchedPolicyGroups(groups)
+    setPrograms(nextPrograms.length ? nextPrograms : [])
+    return nextPrograms
+  }, [])
+
+  const refreshProgramData = useCallback(async () => {
+    await refreshMatchedPolicies()
+    await refreshSavedPolicies()
+  }, [refreshMatchedPolicies, refreshSavedPolicies])
 
   useEffect(() => {
     let ignore = false
@@ -206,7 +218,7 @@ function App() {
     }
 
     restoreSession()
-  }, [])
+  }, [refreshSavedPolicies])
 
   useEffect(() => {
     if (view !== 'analyzing') return undefined
@@ -626,6 +638,8 @@ function App() {
         <ProgramChatPage
           user={user}
           selectedTypes={selectedTypes}
+          onAuthExpired={handleAuthExpired}
+          onMatchedPoliciesRefresh={refreshProgramData}
           onBack={() => navigate('programs')}
         />
       )
