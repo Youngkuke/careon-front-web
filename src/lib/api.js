@@ -89,8 +89,13 @@ function normalizeDocuments(documents = []) {
   )).filter(Boolean)
 }
 
+function normalizePolicyId(value) {
+  const numericId = Number(value)
+  return Number.isSafeInteger(numericId) ? numericId : value
+}
+
 export function normalizePolicy(item) {
-  const id = item.policyId ?? item.id
+  const id = normalizePolicyId(item.policyId ?? item.id)
   return {
     id,
     type: resolveTypeId(item.policyType ?? item.policyTypeId),
