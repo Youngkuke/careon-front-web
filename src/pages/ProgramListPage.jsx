@@ -12,6 +12,7 @@ export function ProgramListPage({
   selectedTypes,
   savedProgramIds,
   user,
+  error,
   onOpenChat,
   onOpenProgram,
   onSaveProgram,
@@ -27,6 +28,7 @@ export function ProgramListPage({
       <div className="programs-main">
         <div className="page-heading">
           <h1>{user ? `${user.name}님의 맞춤 제도` : '맞춤 제도'}</h1>
+          {error ? <p className="form-error">{error}</p> : null}
         </div>
 
         <section className={`selected-programs ${savedPrograms.length ? 'has-items' : 'is-empty'}`}>
