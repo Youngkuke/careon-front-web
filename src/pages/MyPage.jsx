@@ -89,6 +89,7 @@ export function MyPage({ user, error, onUpdateUser, onLogout, onDeleteAccount, o
             value={form.confirmNewPassword}
             onChange={(event) => updateField('confirmNewPassword', event.target.value)}
             helperText={form.newPassword === form.confirmNewPassword ? '' : '새 비밀번호가 일치하지 않아요.'}
+            helperTone="error"
             autoComplete="new-password"
           />
           <label className="field">
