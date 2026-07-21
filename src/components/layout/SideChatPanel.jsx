@@ -4,7 +4,7 @@ import chatbotImg from '../../assets/chatbot.webp'
 
 export function SideChatPanel({
   userName,
-  selectedTypes,
+  selectedTypes = [],
   className = '',
   onBack,
   readOnly = false,
@@ -14,6 +14,7 @@ export function SideChatPanel({
   const messagesRef = useRef(null)
   const isComposingRef = useRef(false)
   const [draft, setDraft] = useState('')
+  const [sending, setSending] = useState(false)
   const [messages, setMessages] = useState(initialMessages || [
     {
       from: 'bot',
@@ -29,25 +30,43 @@ export function SideChatPanel({
     })
   }, [messages])
 
-  const handleSubmit = (event) => {
+  const appendBotMessage = (text) => {
+    if (!text) return
+    setMessages((current) => [
+      ...current,
+      { from: 'bot', text },
+    ])
+  }
+
+  const handleSubmit = async (event) => {
     event.preventDefault()
     const question = draft.trim()
-    if (!question) return
-
-    const answer = selectedTypes.length
-      ? '선택한 관심 유형을 기준으로 카드에 있는 신청 방법, 필요 서류, 마감 정보를 먼저 확인하면 좋아요. 실제 신청 전에는 주관 기관 공고도 함께 확인해 주세요.'
-      : '관심 유형을 고르면 추천 범위를 좁힐 수 있어요. 지금은 전체 제도 기준으로 안내하고 있습니다.'
+    if (!question || sending) return
 
     setDraft('')
     setMessages((current) => [
       ...current,
       { from: 'user', text: question },
-      { from: 'bot', text: answer },
     ])
 
     if (typeof onSubmitMessage === 'function') {
-      onSubmitMessage(question)
+      setSending(true)
+      try {
+        const response = await onSubmitMessage(question)
+        appendBotMessage(typeof response === 'string' ? response : response?.message)
+      } catch (error) {
+        appendBotMessage(error.message)
+      } finally {
+        setSending(false)
+      }
+      return
     }
+
+    const answer = selectedTypes.length
+      ? '선택한 관심 유형을 기준으로 카드에 있는 신청 방법, 필요 서류, 마감 정보를 먼저 확인하면 좋아요. 실제 신청 전에는 주관 기관 공고도 함께 확인해 주세요.'
+      : '관심 유형을 고르면 추천 범위를 좁힐 수 있어요. 지금은 전체 제도 기준으로 안내하고 있습니다.'
+
+    appendBotMessage(answer)
   }
 
   const handleKeyDown = (event) => {
@@ -101,7 +120,7 @@ export function SideChatPanel({
               rows={1}
             />
           </label>
-          <Button className="side-chat__send" type="submit" size="small" disabled={!draft.trim()} aria-label="보내기">
+          <Button className="side-chat__send" type="submit" size="small" disabled={!draft.trim() || sending} aria-label="보내기">
             ↑
           </Button>
         </form>

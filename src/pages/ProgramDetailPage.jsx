@@ -20,7 +20,7 @@ export function ProgramDetailPage({ program, saved, user, selectedTypes, onBack,
   return (
     <section className="program-detail-page">
       <div className="program-detail-main">
-        <ProgramDetailPanel program={program} saved={saved} user={user} onBack={onBack} onSave={onSaveProgram} />
+        <ProgramDetailPanel key={program?.id || 'empty'} program={program} saved={saved} user={user} onBack={onBack} onSave={onSaveProgram} />
       </div>
       <div className="program-detail-insight">
         <SideChatPanel
