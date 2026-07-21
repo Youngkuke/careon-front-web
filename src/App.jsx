@@ -409,7 +409,14 @@ function App() {
     }
   }
 
-  const handleStartFollowupAnalyzing = async () => {
+  const handleStartFollowupAnalyzing = async (matchedPrograms = []) => {
+    if (matchedPrograms.length) {
+      setPrograms((current) => {
+        const existingIds = new Set(current.map((program) => program.id))
+        return [...current, ...matchedPrograms.filter((program) => !existingIds.has(program.id))]
+      })
+    }
+
     try {
       const me = await api.me()
       setUser(me)
