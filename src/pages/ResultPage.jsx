@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { DIAGNOSIS_QUESTIONS } from '../constants/diagnosisQuestions'
 import { SUPPORT_TYPE_MAP } from '../constants/supportTypes'
-import { ProgramCard } from '../components/programs/ProgramCard'
+import { OverflowText, ProgramCard } from '../components/programs/ProgramCard'
 import { Button } from '../components/common/Button'
 import { ChatBubble } from '../components/diagnosis/ChatBubble'
 
@@ -24,10 +24,9 @@ function AlternativeWelfareCard({ program }) {
     <article className="welfare-link-card">
       <div className="program-card__meta">
         <span>{type?.shortLabel}</span>
-        <span>{program.status}</span>
       </div>
-      <h3>{program.title}</h3>
-      <p>{program.summary}</p>
+      <OverflowText as="h3" className="program-card__title">{program.title}</OverflowText>
+      <OverflowText as="p" className="program-card__summary">{program.summary}</OverflowText>
       <a href={program.url} target="_blank" rel="noreferrer">
         제도 링크 보기
       </a>

@@ -34,12 +34,11 @@ export function DiagnosisPage({
 
   return (
     <section className="flow-page flow-page--diagnosis">
-      <div className="flow-card">
-        <div className="flow-card__header">
-          <Button variant="ghost" size="small" onClick={onBack}>
-            처음으로
-          </Button>
-        </div>
+      <Button className="diagnosis-page__back" variant="secondary" size="small" onClick={onBack}>
+        처음으로
+      </Button>
+      <div className="diagnosis-layout">
+        <div className="flow-card">
 
         {isQuestionStep ? (
           <div className="diagnosis-step">
@@ -107,8 +106,9 @@ export function DiagnosisPage({
             </Button>
           </div>
         )}
+        </div>
+        <ProgressBar current={progressCurrent} total={progressTotal} />
       </div>
-      <ProgressBar current={progressCurrent} total={progressTotal} />
     </section>
   )
 }

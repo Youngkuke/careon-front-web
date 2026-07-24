@@ -62,7 +62,7 @@ export function SignupPage({ error, loading = false, onSubmit, onLogin }) {
           </label>
           <div className="auth-actions">
             <Button size="large" className="full-width" type="submit" disabled={!canSubmit || loading}>
-              {loading ? '가입 중...' : '회원가입하기'}
+              {loading ? '가입 중...' : '회원가입'}
             </Button>
             <Button variant="ghost" size="large" onClick={onLogin}>
               로그인
