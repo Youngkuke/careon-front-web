@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { SUPPORT_TYPE_MAP } from '../../constants/supportTypes'
 import { Button } from '../common/Button'
 
-function OverflowText({ as: Tag, className, children }) {
+export function OverflowText({ as: Tag, className, children }) {
   const textRef = useRef(null)
   const [overflowDistance, setOverflowDistance] = useState(0)
 
