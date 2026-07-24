@@ -26,7 +26,6 @@ function OverflowText({ as: Tag, className, children }) {
     <Tag
       ref={textRef}
       className={`${className} ${isOverflowing ? 'is-overflowing' : ''}`}
-      title={isOverflowing ? children : undefined}
       style={isOverflowing ? { '--scroll-distance': `-${overflowDistance}px` } : undefined}
     >
       <span>{children}</span>

@@ -5,6 +5,25 @@
   background: #ffffff;
 }
 
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(14, 159, 114, 0.42) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 0.5rem;
+  height: 0.5rem;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  border-radius: 62.4375rem;
+  background: rgba(14, 159, 114, 0.28);
+}
+
 .topbar {
   position: sticky;
   top: 0;
@@ -315,6 +334,7 @@ main {
   flex-direction: column;
   gap: 1.125rem;
   background: #ffffff;
+  border: 0.09375rem solid #e8ebea;
   box-shadow: 0 1.5rem 4.375rem rgba(14, 159, 114, 0.12);
 }
 
@@ -446,7 +466,7 @@ main {
   border-radius: 1.375rem;
   border-bottom-right-radius: 0.5rem;
   background: var(--primary);
-  color: #083225;
+  color: #ffffff;
   border-color: transparent;
   box-shadow: 0 0.75rem 1.875rem rgba(32, 214, 155, 0.22);
   display: flex;
@@ -817,6 +837,7 @@ main {
 
 .progress-dashes span.is-complete {
   background: var(--primary);
+  border: 0;
   box-shadow: 0 0.375rem 1rem rgba(32, 214, 155, 0.22);
 }
 
@@ -1086,7 +1107,7 @@ main {
   display: flex;
   flex-direction: column;
   gap: 0.625rem;
-  text-align: left;
+  text-align: center;
 }
 
 .password-hero__eyebrow {
@@ -1104,7 +1125,7 @@ main {
   font-size: 2rem;
   line-height: 1.25;
   font-weight: 900;
-  text-align: left;
+  text-align: center;
 }
 
 .password-hero p {
@@ -1133,6 +1154,19 @@ main {
 
 .password-result--success {
   background: #f3fff9;
+}
+
+.password-result--sent {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  gap: 1rem;
+}
+
+.password-result--sent p {
+  font-size: 1rem;
+  font-weight: 400;
 }
 
 .password-result__mark {
@@ -1480,16 +1514,7 @@ main {
 }
 
 .selected-programs__chat-button::after {
-  content: "";
-  position: absolute;
-  left: 0.25rem;
-  bottom: 0.25rem;
-  width: 1.55rem;
-  height: 1.55rem;
-  background: #ffffff;
-  clip-path: polygon(0 100%, 100% 0, 100% 100%);
-  transform: rotate(10deg);
-  filter: drop-shadow(0 0.5rem 0.75rem rgba(14, 159, 114, 0.12));
+  content: none;
 }
 
 .selected-programs__chat-avatar {
@@ -1497,34 +1522,49 @@ main {
   z-index: 1;
   width: 4.5rem;
   height: 4.5rem;
-  border-radius: 62.4375rem;
-  background: #ffffff;
-  overflow: hidden;
-  box-shadow: 0 0.625rem 1.5rem rgba(14, 159, 114, 0.18);
+  background: transparent;
+  overflow: visible;
+  box-shadow: none;
   display: grid;
   place-items: center;
 }
 
 .selected-programs__chat-avatar img {
-  width: 4.25rem;
-  height: 4.25rem;
+  width: 4.75rem;
+  height: 4.75rem;
   object-fit: contain;
-  transform: translateY(0.25rem);
+  transform: none;
 }
 
 .program-chat-page {
   width: 100%;
   min-height: calc(100svh - 6rem);
-  padding: 1.5rem 2.5rem 2.25rem;
+  position: relative;
+  padding: 3.1875rem 2.5rem 2.25rem;
   background: #ffffff;
   display: flex;
   justify-content: center;
 }
 
+.program-chat-page__back {
+  position: absolute;
+  top: 0;
+  right: max(2.5rem, calc((100% - 76rem) / 2));
+}
+
 .program-chat-page .side-chat--full {
   width: min(76rem, 100%);
-  height: calc(100svh - 9.75rem);
+  position: relative;
+  height: calc(100svh - 15.1875rem);
+  margin-bottom: 3.75rem;
   max-height: none;
+}
+
+.side-chat--full .side-chat__form {
+  position: absolute;
+  right: 0;
+  bottom: -3.75rem;
+  left: 0;
 }
 
 .selected-programs.is-empty {
@@ -1869,9 +1909,9 @@ main {
 }
 
 .program-detail-page {
-  width: min(80rem, 80%);
+  width: min(80rem, calc(100% - 5rem));
   margin: 0 auto;
-  padding: 1.8125rem 0 2.25rem;
+  padding: 0 0 2.25rem;
   display: grid;
   grid-template-columns: minmax(0, 5.5fr) minmax(20rem, 4.5fr);
   gap: 1rem;
@@ -1937,6 +1977,12 @@ main {
 }
 
 .detail-panel__topbar {
+  position: sticky;
+  top: -2rem;
+  z-index: 5;
+  margin: -2rem -2rem 0;
+  padding: 1rem 2rem;
+  background: #ffffff;
   justify-content: space-between;
   flex-wrap: wrap;
 }
@@ -2540,8 +2586,17 @@ main {
     padding: 1.25rem 1.125rem;
   }
 
+  .program-chat-page {
+    padding-top: 3.25rem;
+  }
+
+  .program-chat-page__back {
+    top: 0;
+    right: 1.125rem;
+  }
+
   .program-chat-page .side-chat--full {
-    height: calc(100svh - 7.25rem);
+    height: calc(100svh - 13rem);
   }
 
   .program-detail-page {
@@ -2558,6 +2613,12 @@ main {
   .program-detail-insight .side-chat {
     height: auto;
     overflow: visible;
+  }
+
+  .detail-panel__topbar {
+    top: -1.5rem;
+    margin: -1.5rem -1.5rem 0;
+    padding: 0.875rem 1.5rem;
   }
 
   .detail-panel-wrapper {
