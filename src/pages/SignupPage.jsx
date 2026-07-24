@@ -65,7 +65,7 @@ export function SignupPage({ error, loading = false, onSubmit, onLogin }) {
               {loading ? '가입 중...' : '회원가입하기'}
             </Button>
             <Button variant="ghost" size="large" onClick={onLogin}>
-              로그인으로
+              로그인
             </Button>
           </div>
           {error ? <p className="form-error">{error}</p> : null}

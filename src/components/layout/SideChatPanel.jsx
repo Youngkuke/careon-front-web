@@ -2,12 +2,41 @@ import { useEffect, useRef, useState } from 'react'
 import { Button } from '../common/Button'
 import chatbotImg from '../../assets/chatbot.webp'
 
+function TypingMessage({ text, onProgress }) {
+  const [visibleText, setVisibleText] = useState('')
+
+  useEffect(() => {
+    const characters = Array.from(text)
+    let characterIndex = 0
+
+    const intervalId = window.setInterval(() => {
+      characterIndex += 1
+      setVisibleText(characters.slice(0, characterIndex).join(''))
+
+      if (characterIndex >= characters.length) {
+        window.clearInterval(intervalId)
+      }
+    }, 20)
+
+    return () => window.clearInterval(intervalId)
+  }, [text])
+
+  useEffect(() => {
+    onProgress?.()
+  }, [onProgress, visibleText])
+
+  return visibleText
+}
+
 export function SideChatPanel({
   userName,
   selectedTypes = [],
   className = '',
   onBack,
   readOnly = false,
+  animateBotMessages = false,
+  isWaiting = false,
+  title = '',
   initialMessages,
   onSubmitMessage,
 }) {
@@ -28,7 +57,14 @@ export function SideChatPanel({
       top: messagesRef.current.scrollHeight,
       behavior: 'smooth',
     })
-  }, [messages])
+  }, [isWaiting, messages, sending])
+
+  const scrollMessagesToBottom = () => {
+    messagesRef.current?.scrollTo({
+      top: messagesRef.current.scrollHeight,
+      behavior: 'auto',
+    })
+  }
 
   const appendBotMessage = (text) => {
     if (!text) return
@@ -41,7 +77,7 @@ export function SideChatPanel({
   const handleSubmit = async (event) => {
     event.preventDefault()
     const question = draft.trim()
-    if (!question || sending) return
+    if (!question || sending || isWaiting) return
 
     setDraft('')
     setMessages((current) => [
@@ -82,23 +118,40 @@ export function SideChatPanel({
 
   return (
     <aside className={`side-chat ${className}`} aria-label="추천 제도 상담">
-      <div className="side-chat__header">
-        <strong>CareOn 상담</strong>
-        {onBack ? (
-          <Button variant="secondary" size="small" onClick={onBack}>
-            돌아가기
-          </Button>
-        ) : null}
-      </div>
+      {title || onBack ? (
+        <div className="side-chat__header">
+          {title ? <strong>{title}</strong> : <span />}
+          {onBack ? (
+            <Button variant="secondary" size="small" onClick={onBack}>
+              돌아가기
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
       <div className="side-chat__messages" ref={messagesRef}>
         {messages.map((message, index) => (
           <div key={`${message.from}-${index}`} className={`side-chat__row side-chat__row--${message.from}`}>
             {message.from === 'bot' ? <img className="side-chat__avatar" src={chatbotImg} alt="" aria-hidden="true" /> : null}
             <p className={`side-chat__message side-chat__message--${message.from}`}>
-              {message.text}
+              {message.from === 'bot' && animateBotMessages && index === messages.length - 1 ? (
+                <TypingMessage
+                  text={message.text}
+                  onProgress={scrollMessagesToBottom}
+                />
+              ) : message.text}
             </p>
           </div>
         ))}
+        {sending || isWaiting ? (
+          <div className="side-chat__row side-chat__row--bot side-chat__row--typing" role="status" aria-label="챗봇이 입력 중입니다">
+            <img className="side-chat__avatar" src={chatbotImg} alt="" aria-hidden="true" />
+            <div className="side-chat__typing" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+            </div>
+          </div>
+        ) : null}
       </div>
       {!readOnly ? (
         <form className="side-chat__form" onSubmit={handleSubmit}>
@@ -120,7 +173,7 @@ export function SideChatPanel({
               rows={1}
             />
           </label>
-          <Button className="side-chat__send" type="submit" size="small" disabled={!draft.trim() || sending} aria-label="보내기">
+          <Button className="side-chat__send" type="submit" size="small" disabled={!draft.trim() || sending || isWaiting} aria-label="보내기">
             ↑
           </Button>
         </form>

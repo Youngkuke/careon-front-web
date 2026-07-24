@@ -4,22 +4,19 @@ import { api } from '../lib/api'
 
 export function FollowupQuestionPage({ user, onAuthExpired, onComplete }) {
   const [sessionId, setSessionId] = useState('')
-  const [initialMessages, setInitialMessages] = useState([
-    {
-      from: 'bot',
-      text: '이제 조금 더 여쭤볼게요. 편하게 이야기해 주셔도 돼요.',
-    },
-    {
-      from: 'bot',
-      text: '지금 함께 살고 있는 분들이 어떻게 되시나요? 가족 구성이나 생활 상황을 편하게 말씀해 주세요.',
-    },
-  ])
+  const [isSessionLoading, setIsSessionLoading] = useState(Boolean(user?.carerId))
+  const [initialMessages, setInitialMessages] = useState([])
 
   useEffect(() => {
     let ignore = false
 
     const createSession = async () => {
-      if (!user?.carerId) return
+      if (!user?.carerId) {
+        setIsSessionLoading(false)
+        return
+      }
+
+      setIsSessionLoading(true)
 
       try {
         const session = await api.createChatSession(user.carerId)
@@ -43,6 +40,10 @@ export function FollowupQuestionPage({ user, onAuthExpired, onComplete }) {
             ...current,
             { from: 'bot', text: error.message },
           ])
+        }
+      } finally {
+        if (!ignore) {
+          setIsSessionLoading(false)
         }
       }
     }
@@ -79,6 +80,8 @@ export function FollowupQuestionPage({ user, onAuthExpired, onComplete }) {
         key={initialMessages.length}
         className="side-chat--full"
         selectedTypes={[]}
+        animateBotMessages
+        isWaiting={isSessionLoading}
         initialMessages={initialMessages}
         onSubmitMessage={handleSubmitMessage}
       />

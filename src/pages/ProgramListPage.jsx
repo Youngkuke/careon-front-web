@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { SUPPORT_TYPES } from '../constants/supportTypes'
 import { ProgramCard } from '../components/programs/ProgramCard'
 import { ProgramSection } from '../components/programs/ProgramSection'
-import chatbotImg from '../assets/chatbot.webp'
+import chatIconImg from '../assets/chaticon.webp'
 import noneSaveImg from '../assets/nonesave.webp'
 
 const SUPPORT_TYPE_ORDER = SUPPORT_TYPES.map((type) => type.id)
@@ -22,6 +22,7 @@ export function ProgramListPage({
     [...programs].sort((a, b) => SUPPORT_TYPE_ORDER.indexOf(a.type) - SUPPORT_TYPE_ORDER.indexOf(b.type))
   ), [programs])
   const savedPrograms = programs.filter((program) => savedProgramIds.includes(program.id))
+  const recommendedPrograms = orderedPrograms.filter((program) => !savedProgramIds.includes(program.id))
 
   return (
     <section className="programs-page programs-page--recommendation">
@@ -34,7 +35,7 @@ export function ProgramListPage({
         <section className={`selected-programs ${savedPrograms.length ? 'has-items' : 'is-empty'}`}>
           <button className="selected-programs__chat-button" type="button" onClick={onOpenChat} aria-label="상담 채팅 열기">
             <span className="selected-programs__chat-avatar">
-              <img src={chatbotImg} alt="" aria-hidden="true" />
+              <img src={chatIconImg} alt="" aria-hidden="true" />
             </span>
           </button>
           <div className="selected-programs__header">
@@ -62,7 +63,7 @@ export function ProgramListPage({
             <ProgramSection
               key={typeId}
               typeId={typeId}
-              programs={orderedPrograms.filter((program) => program.type === typeId)}
+              programs={recommendedPrograms.filter((program) => program.type === typeId)}
               savedProgramIds={savedProgramIds}
               onOpenProgram={onOpenProgram}
               onSaveProgram={onSaveProgram}

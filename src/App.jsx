@@ -664,9 +664,9 @@ function App() {
           user={user}
           error={apiError}
           onUpdateUser={handleUpdateUser}
-          onLogout={handleLogout}
           onDeleteAccount={handleDeleteAccount}
           onLogin={() => navigateWithClearedError('auth')}
+          onBack={() => navigate('programs')}
         />
       )
     }

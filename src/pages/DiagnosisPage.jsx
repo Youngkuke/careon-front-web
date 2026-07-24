@@ -33,7 +33,7 @@ export function DiagnosisPage({
   }, [answeredCount, isQuestionStep])
 
   return (
-    <section className="flow-page">
+    <section className="flow-page flow-page--diagnosis">
       <div className="flow-card">
         <div className="flow-card__header">
           <Button variant="ghost" size="small" onClick={onBack}>
@@ -60,14 +60,14 @@ export function DiagnosisPage({
                   <span>질문 {currentIndex + 1}</span>
                   <strong>{currentQuestion.text}</strong>
                 </ChatBubble>
+                <div className="conversation-actions">
+                  <AnswerButtonGroup
+                    positiveLabel={currentQuestion.positiveLabel}
+                    negativeLabel={currentQuestion.negativeLabel}
+                    onAnswer={(value) => onAnswer(currentQuestion.id, value)}
+                  />
+                </div>
               </div>
-            </div>
-            <div className="conversation-actions">
-              <AnswerButtonGroup
-                positiveLabel={currentQuestion.positiveLabel}
-                negativeLabel={currentQuestion.negativeLabel}
-                onAnswer={(value) => onAnswer(currentQuestion.id, value)}
-              />
             </div>
           </div>
         ) : (
@@ -107,8 +107,8 @@ export function DiagnosisPage({
             </Button>
           </div>
         )}
-        <ProgressBar current={progressCurrent} total={progressTotal} />
       </div>
+      <ProgressBar current={progressCurrent} total={progressTotal} />
     </section>
   )
 }

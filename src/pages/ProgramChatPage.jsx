@@ -17,13 +17,19 @@ export function ProgramChatPage({
   onBack,
 }) {
   const [sessionId, setSessionId] = useState('')
+  const [isSessionLoading, setIsSessionLoading] = useState(Boolean(user?.carerId))
   const [initialMessages, setInitialMessages] = useState(() => createInitialMessages(user?.name))
 
   useEffect(() => {
     let ignore = false
 
     const createSession = async () => {
-      if (!user?.carerId) return
+      if (!user?.carerId) {
+        setIsSessionLoading(false)
+        return
+      }
+
+      setIsSessionLoading(true)
 
       try {
         const session = await api.createChatSession(user.carerId)
@@ -47,6 +53,10 @@ export function ProgramChatPage({
             ...current,
             { from: 'bot', text: error.message },
           ])
+        }
+      } finally {
+        if (!ignore) {
+          setIsSessionLoading(false)
         }
       }
     }
@@ -93,6 +103,8 @@ export function ProgramChatPage({
         className="side-chat--full"
         userName={user?.name}
         selectedTypes={selectedTypes}
+        animateBotMessages
+        isWaiting={isSessionLoading}
         initialMessages={initialMessages}
         onSubmitMessage={handleSubmitMessage}
         onBack={onBack}

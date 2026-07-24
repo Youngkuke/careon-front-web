@@ -64,6 +64,7 @@ export function ProgramDetailPage({ program, saved, user, selectedTypes, onBack,
         <SideChatPanel
           key={`${program?.id || 'empty'}-${insightMessages.length}-${translationMessage}`}
           className="side-chat--embedded side-chat--readonly"
+          title="제도번역기"
           userName={user?.name}
           selectedTypes={selectedTypes}
           initialMessages={insightMessages}
