@@ -26,8 +26,8 @@ export function PasswordResetPage({ onSendResetLink, onResetPassword, onBack, on
 
   if (resetComplete) {
     return (
-      <section className="auth-page auth-page--password">
-        <div className="auth-panel password-panel">
+      <section className="auth-page">
+        <div className="auth-panel">
           <div className="password-hero">
             <h1>비밀번호 재설정 완료</h1>
             <p>새 비밀번호로 다시 로그인하면 맞춤 제도 추천을 이어갈 수 있어요.</p>
@@ -35,7 +35,7 @@ export function PasswordResetPage({ onSendResetLink, onResetPassword, onBack, on
           <div className="password-result password-result--success">
             <div className="password-result__mark" aria-hidden="true">✓</div>
             <p>비밀번호가 안전하게 변경되었어요.</p>
-            <Button size="large" onClick={onComplete}>로그인으로 돌아가기</Button>
+            <Button size="large" onClick={onComplete}>로그인</Button>
           </div>
         </div>
       </section>
@@ -46,8 +46,8 @@ export function PasswordResetPage({ onSendResetLink, onResetPassword, onBack, on
     const canSubmit = passwordForm.newPassword && passwordForm.confirmPassword && passwordMatches
 
     return (
-      <section className="auth-page auth-page--password">
-        <div className="auth-panel password-panel">
+      <section className="auth-page">
+        <div className="auth-panel">
           <div className="password-hero">
             <h1>새 비밀번호 설정</h1>
             <p>메일로 받은 인증 링크가 확인되었어요. 앞으로 사용할 비밀번호를 입력해 주세요.</p>
@@ -89,7 +89,7 @@ export function PasswordResetPage({ onSendResetLink, onResetPassword, onBack, on
               <Button size="large" className="full-width" type="submit" disabled={!canSubmit || loading}>
                 {loading ? '변경 중...' : '비밀번호 변경하기'}
               </Button>
-              <Button variant="ghost" size="large" onClick={onBack}>로그인으로</Button>
+              <Button variant="ghost" size="large" onClick={onBack}>로그인</Button>
             </div>
             {error ? <p className="form-error">{error}</p> : null}
           </form>
@@ -99,18 +99,15 @@ export function PasswordResetPage({ onSendResetLink, onResetPassword, onBack, on
   }
 
   return (
-    <section className="auth-page auth-page--password">
-      <div className="auth-panel password-panel">
-        <div className="password-hero">
-          <h1>비밀번호 찾기</h1>
-          <p>가입한 이메일로 비밀번호 재설정 링크를 보내드릴게요.</p>
-        </div>
-        {sent ? (
-          <div className="password-result">
-            <div className="password-result__mark" aria-hidden="true">↗</div>
-            <p>입력한 이메일로 재설정 링크를 보냈어요.</p>
-            <span>메일함에서 CareOn 안내 메일을 확인해 주세요.</span>
-            <Button size="large" onClick={onComplete}>로그인으로 돌아가기</Button>
+    <section className="auth-page">
+        <div className="auth-panel">
+          <div className="password-hero">
+            <h1>비밀번호 찾기</h1>
+          </div>
+          {sent ? (
+          <div className="password-result password-result--sent">
+            <p>재설정 링크를 보냈어요.</p>
+            <Button size="large" onClick={onComplete}>로그인</Button>
           </div>
         ) : (
           <form
@@ -138,7 +135,7 @@ export function PasswordResetPage({ onSendResetLink, onResetPassword, onBack, on
               <Button size="large" className="full-width" type="submit" disabled={!email || loading}>
                 {loading ? '발송 중...' : '재설정 링크 받기'}
               </Button>
-              <Button variant="ghost" size="large" onClick={onBack}>로그인으로</Button>
+              <Button variant="ghost" size="large" onClick={onBack}>로그인</Button>
             </div>
             {error ? <p className="form-error">{error}</p> : null}
           </form>

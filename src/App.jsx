@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import './App.css'
 import { REQUIRED_DIAGNOSIS_IDS } from './constants/diagnosisQuestions'
 import {
@@ -87,6 +87,7 @@ const clearPasswordResetUrl = () => {
 
 function App() {
   const [view, setView] = useState(() => (isPasswordResetUrl() ? 'passwordReset' : 'onboarding'))
+  const historyInitializedRef = useRef(false)
   const [answers, setAnswers] = useState({})
   const [selectedTypes, setSelectedTypes] = useState(readSessionTypes)
   const [user, setUser] = useState(null)
@@ -107,6 +108,29 @@ function App() {
   const [alternativePrograms, setAlternativePrograms] = useState([])
   const [alternativesLoading, setAlternativesLoading] = useState(false)
   const [alternativesError, setAlternativesError] = useState('')
+
+  useEffect(() => {
+    if (!historyInitializedRef.current) {
+      const initialView = isPasswordResetUrl() ? 'passwordReset' : 'onboarding'
+      window.history.replaceState({ careonView: initialView, careonRoot: true }, '', window.location.href)
+      window.history.pushState({ careonView: initialView }, '', window.location.href)
+      historyInitializedRef.current = true
+    }
+
+    const handlePopState = (event) => {
+      const nextView = event.state?.careonView
+      if (!nextView) return
+
+      setView(nextView)
+
+      if (event.state.careonRoot) {
+        window.history.pushState({ careonView: nextView }, '', window.location.href)
+      }
+    }
+
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [])
 
   const eligible = REQUIRED_DIAGNOSIS_IDS.every((id) => answers[id] === true)
   const activeProgram = programs.find((program) => program.id === activeProgramId)
@@ -238,24 +262,29 @@ function App() {
   }, [analyzingNextView, view])
 
   const navigate = (nextView) => {
+    const commitNavigation = (targetView) => {
+      window.history.pushState({ careonView: targetView }, '', window.location.href)
+      setView(targetView)
+    }
+
     if (view === 'passwordReset' && nextView !== 'passwordReset') {
       clearPasswordResetUrl()
     }
 
     if (nextView === 'programs' && !user) {
-      setView('auth')
+      commitNavigation('auth')
       return
     }
 
     if (nextView === 'programs' && shouldShowFollowupFirst()) {
-      setView('followup')
+      commitNavigation('followup')
       return
     }
 
     if (nextView === 'programs') {
       setActiveProgramId(null)
     }
-    setView(nextView)
+    commitNavigation(nextView)
   }
 
   const navigateWithClearedError = (nextView) => {

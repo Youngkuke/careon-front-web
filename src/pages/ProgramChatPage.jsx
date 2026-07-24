@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Button } from '../components/common/Button'
 import { SideChatPanel } from '../components/layout/SideChatPanel'
 import { api } from '../lib/api'
 
@@ -98,6 +99,9 @@ export function ProgramChatPage({
 
   return (
     <section className="program-chat-page">
+      <Button className="program-chat-page__back" variant="secondary" size="small" onClick={onBack}>
+        돌아가기
+      </Button>
       <SideChatPanel
         key={initialMessages.length}
         className="side-chat--full"
@@ -107,7 +111,6 @@ export function ProgramChatPage({
         isWaiting={isSessionLoading}
         initialMessages={initialMessages}
         onSubmitMessage={handleSubmitMessage}
-        onBack={onBack}
       />
     </section>
   )
