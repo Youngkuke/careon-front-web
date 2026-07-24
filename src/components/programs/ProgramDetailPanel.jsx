@@ -58,7 +58,7 @@ const DOCUMENT_GUIDES = {
       '공식 신청 페이지나 주민센터에서 최신 신청서를 받아 작성해 주세요.',
       '온라인 신청이라면 입력한 내용이 신청서로 자동 생성되는 경우도 있어요.',
     ],
-    linkLabel: '제도 공식 페이지 열기',
+    linkLabel: '서류 발급 받으러 가기',
     url: 'program',
   },
   '소득 확인 자료': {
@@ -120,7 +120,7 @@ const DOCUMENT_GUIDES = {
       '지역 공고문에서 우선순위 항목과 필요한 증빙을 먼저 확인해 주세요.',
       '해당되는 항목이 있다면 공식 신청 페이지 안내에 맞춰 서류를 준비해 주세요.',
     ],
-    linkLabel: '제도 공식 페이지 열기',
+    linkLabel: '서류 발급 받으러 가기',
     url: 'program',
   },
 }
@@ -132,7 +132,7 @@ const getDocumentGuide = (document, program) => {
       program.documentGuide,
       '제출처마다 인정되는 서류 형식이 다를 수 있으니 신청 전 공식 안내를 확인해 주세요.',
     ].filter(Boolean),
-    linkLabel: '제도 공식 페이지 열기',
+    linkLabel: '서류 발급 받으러 가기',
     url: 'program',
   }
 
@@ -172,17 +172,19 @@ export function ProgramDetailPanel({ program, saved, user, onBack, onSave }) {
   }
 
   return (
-    <article className="detail-panel">
+    <div className="detail-panel-wrapper">
+    <article className={`detail-panel ${selectedDocumentGuide ? 'has-document-guide' : ''}`}>
       <div className="detail-panel__topbar">
         <Button variant="ghost" size="small" onClick={onBack}>
           ← 목록으로
         </Button>
-        {saved ? <span className="detail-panel__saved">알림 저장됨</span> : null}
+        <a className="detail-official-link detail-official-link--top" href={program.url} target="_blank" rel="noreferrer">
+          공식 사이트 &gt;
+        </a>
       </div>
       <header className="detail-panel__title">
         <div className="detail-panel__badges">
           <span>{SUPPORT_TYPE_MAP[program.type]?.label}</span>
-          <span>{program.status}</span>
         </div>
         <h1>{program.title}</h1>
         <p>{program.agency}</p>
@@ -213,6 +215,27 @@ export function ProgramDetailPanel({ program, saved, user, onBack, onSave }) {
           ))}
         </div>
       </section>
+      <div className="detail-panel__actions">
+        <Button className={`detail-save-button ${saved ? 'is-saved' : ''}`} disabled={!user} onClick={handleSaveClick}>
+          {saved ? '마감일 알림 받는 중' : '마감일 알림 받기'}
+        </Button>
+        {!user ? <span className="detail-login-note">로그인 후 마감일 알림을 받을 수 있어요.</span> : null}
+      </div>
+      <Modal
+        open={showCancelConfirm}
+        title="마감일 알림을 끌까요?"
+        primaryLabel="계속 받을게요"
+        secondaryLabel="알림 끄기"
+        className="save-cancel-modal"
+        onPrimary={() => setShowCancelConfirm(false)}
+        onSecondary={handleConfirmCancel}
+      >
+        <p>
+          <strong>{program.title}</strong>의 알림이 저장 목록에서 사라져요.
+        </p>
+        <p>필요해지면 언제든 다시 저장해서 마감일 알림을 받을 수 있어요.</p>
+      </Modal>
+    </article>
       {selectedDocumentGuide ? (
         <div className="document-guide-backdrop" role="presentation" onClick={() => setSelectedDocument(null)}>
           <section
@@ -244,29 +267,6 @@ export function ProgramDetailPanel({ program, saved, user, onBack, onSave }) {
           </section>
         </div>
       ) : null}
-      <div className="detail-panel__actions">
-        <Button className={`detail-save-button ${saved ? 'is-saved' : ''}`} disabled={!user} onClick={handleSaveClick}>
-          {saved ? '마감일 알림 받는 중' : '마감일 알림 받기'}
-        </Button>
-        {!user ? <span className="detail-login-note">로그인 후 마감일 알림을 받을 수 있어요.</span> : null}
-        <a className="detail-official-link" href={program.url} target="_blank" rel="noreferrer">
-          공식 사이트 열기
-        </a>
-      </div>
-      <Modal
-        open={showCancelConfirm}
-        title="마감일 알림을 끌까요?"
-        primaryLabel="계속 받을게요"
-        secondaryLabel="알림 끄기"
-        className="save-cancel-modal"
-        onPrimary={() => setShowCancelConfirm(false)}
-        onSecondary={handleConfirmCancel}
-      >
-        <p>
-          <strong>{program.title}</strong>의 알림이 저장 목록에서 사라져요.
-        </p>
-        <p>필요해지면 언제든 다시 저장해서 마감일 알림을 받을 수 있어요.</p>
-      </Modal>
-    </article>
+    </div>
   )
 }

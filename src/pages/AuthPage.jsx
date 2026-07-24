@@ -32,7 +32,7 @@ export function AuthPage({ error, loading = false, onSubmit, onSkip, onFindPassw
           />
           <div className="auth-actions">
             <Button size="large" className="full-width" type="submit" disabled={loading}>
-              {loading ? '로그인 중...' : '로그인하기'}
+              {loading ? '로그인 중...' : '로그인'}
             </Button>
             <Button variant="ghost" size="large" onClick={onSkip}>
               메인으로

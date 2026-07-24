@@ -12,7 +12,7 @@ const createProfileForm = (user) => ({
   confirmNewPassword: '',
 })
 
-export function MyPage({ user, error, onUpdateUser, onLogout, onDeleteAccount, onLogin }) {
+export function MyPage({ user, error, onUpdateUser, onDeleteAccount, onLogin, onBack }) {
   const [form, setForm] = useState(() => createProfileForm(user))
   const [formError, setFormError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
@@ -64,8 +64,10 @@ export function MyPage({ user, error, onUpdateUser, onLogout, onDeleteAccount, o
   return (
     <section className="mypage">
       <div className="mypage__panel">
-        <span className="eyebrow">마이페이지</span>
-        <h1>내 정보</h1>
+        <div className="mypage__topbar">
+          <h2>마이페이지</h2>
+          <Button variant="ghost" size="small" onClick={onBack}>뒤로가기</Button>
+        </div>
         <div className="profile-form">
           <TextField label="이름 또는 닉네임" value={form.name} onChange={(event) => updateField('name', event.target.value)} />
           <TextField label="이메일" type="email" value={form.email} disabled />
@@ -103,7 +105,6 @@ export function MyPage({ user, error, onUpdateUser, onLogout, onDeleteAccount, o
           </label>
           <div className="profile-actions">
             <Button onClick={handleSubmit}>수정 저장</Button>
-            <Button variant="secondary" onClick={onLogout}>로그아웃</Button>
             <Button variant="danger" onClick={onDeleteAccount}>회원 탈퇴</Button>
           </div>
           {formError || error ? <p className="form-error">{formError || error}</p> : null}
