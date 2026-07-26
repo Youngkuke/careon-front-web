@@ -12,7 +12,6 @@ const createInitialMessages = (userName) => [
 
 export function ProgramChatPage({
   user,
-  selectedTypes,
   onAuthExpired,
   onMatchedPoliciesRefresh,
   onBack,
@@ -106,7 +105,6 @@ export function ProgramChatPage({
         key={initialMessages.length}
         className="side-chat--full"
         userName={user?.name}
-        selectedTypes={selectedTypes}
         animateBotMessages
         isWaiting={isSessionLoading}
         initialMessages={initialMessages}

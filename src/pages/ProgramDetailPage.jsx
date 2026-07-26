@@ -3,7 +3,7 @@ import { ProgramDetailPanel } from '../components/programs/ProgramDetailPanel'
 import { SideChatPanel } from '../components/layout/SideChatPanel'
 import { api } from '../lib/api'
 
-export function ProgramDetailPage({ program, saved, user, selectedTypes, onBack, onSaveProgram }) {
+export function ProgramDetailPage({ program, saved, user, onBack, onSaveProgram }) {
   const [translationMessage, setTranslationMessage] = useState('')
 
   useEffect(() => {
@@ -66,7 +66,6 @@ export function ProgramDetailPage({ program, saved, user, selectedTypes, onBack,
           className="side-chat--embedded side-chat--readonly"
           title="제도번역기"
           userName={user?.name}
-          selectedTypes={selectedTypes}
           initialMessages={insightMessages}
           readOnly
         />

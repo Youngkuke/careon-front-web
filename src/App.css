@@ -919,9 +919,10 @@ main {
   padding-left: 3rem;
 }
 
-.alternative-list--chat .program-card {
-  flex: 1 1 calc((100% - 2rem) / 3);
-  max-width: calc((100% - 2rem) / 3);
+.alternative-list--chat .program-card,
+.alternative-list--chat .welfare-link-card {
+  flex: 1 1 calc((100% - 1rem) / 2);
+  max-width: calc((100% - 1rem) / 2);
 }
 
 .auth-panel {
@@ -941,12 +942,8 @@ main {
 }
 
 .auth-page {
-  height: calc(100svh - 6rem);
   padding-top: 0;
-  padding-bottom: 0;
   align-items: center;
-  overflow: hidden;
-  transform: translateY(-3rem);
 }
 
 .auth-panel {
@@ -1349,7 +1346,7 @@ main {
   position: relative;
   flex: 0 0 calc((100% - 2rem) / 3);
   min-width: 0;
-  height: 14rem;
+  min-height: 14rem;
   padding: 1rem;
   background: rgba(255, 255, 255, 0.94);
   border-color: #e8ebea;
@@ -1358,7 +1355,6 @@ main {
   display: flex;
   flex-direction: column;
   gap: 0.625rem;
-  overflow: hidden;
 }
 
 .program-card.is-saved {
@@ -1439,37 +1435,18 @@ main {
 .program-card__summary {
   width: 100%;
   margin: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.program-card__title > span,
-.program-card__agency > span,
-.program-card__summary > span {
-  display: inline-block;
-  min-width: 100%;
-}
-
-.program-card__title.is-overflowing:hover > span,
-.program-card__agency.is-overflowing:hover > span,
-.program-card__summary.is-overflowing:hover > span {
-  animation: program-card-text-scroll 6.5s ease-in-out infinite alternate;
-}
-
-@keyframes program-card-text-scroll {
-  0%, 3.6% {
-    transform: translateX(0);
-  }
-
-  96.4%, 100% {
-    transform: translateX(var(--scroll-distance));
-  }
+  overflow-wrap: anywhere;
 }
 
 .program-card__agency {
   font-weight: 800;
   color: var(--primary-dark);
+}
+
+.chat-bubble .result-eligible-message {
+  color: #073326 !important;
+  font-size: 1.5rem;
+  font-weight: 900 !important;
 }
 
 .program-card__actions {
@@ -2684,7 +2661,8 @@ main {
     padding-left: 0;
   }
 
-  .alternative-list--chat .program-card {
+  .alternative-list--chat .program-card,
+  .alternative-list--chat .welfare-link-card {
     flex-basis: 100%;
     max-width: 100%;
   }

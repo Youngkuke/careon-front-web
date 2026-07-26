@@ -1,17 +1,13 @@
 import { useEffect, useRef } from 'react'
 import { DIAGNOSIS_QUESTIONS } from '../constants/diagnosisQuestions'
-import { SUPPORT_TYPES } from '../constants/supportTypes'
 import { AnswerButtonGroup } from '../components/diagnosis/AnswerButtonGroup'
 import { ChatBubble } from '../components/diagnosis/ChatBubble'
 import { ProgressBar } from '../components/diagnosis/ProgressBar'
-import { SupportTypeSelector } from '../components/diagnosis/SupportTypeSelector'
 import { Button } from '../components/common/Button'
 
 export function DiagnosisPage({
   answers,
-  selectedTypes,
   onAnswer,
-  onToggleType,
   onComplete,
   onBack,
 }) {
@@ -21,8 +17,8 @@ export function DiagnosisPage({
   const currentQuestion = isQuestionStep ? DIAGNOSIS_QUESTIONS[currentIndex] : null
   const answeredQuestions = DIAGNOSIS_QUESTIONS.filter((question) => answers[question.id] !== undefined)
   const answeredCount = answeredQuestions.length
-  const progressTotal = DIAGNOSIS_QUESTIONS.length + 1
-  const progressCurrent = answeredCount + (!isQuestionStep && selectedTypes.length ? 1 : 0)
+  const progressTotal = DIAGNOSIS_QUESTIONS.length
+  const progressCurrent = answeredCount
 
   useEffect(() => {
     if (!logRef.current) return
@@ -85,23 +81,11 @@ export function DiagnosisPage({
               ))}
               <div className="conversation-turn">
                 <ChatBubble>
-                  <strong>궁금하신 제도의 유형을 선택해주세요.</strong>
-                  <p>복수 선택 가능 (최대 4가지)</p>
+                  <strong>답변을 바탕으로 필요한 제도를 찾아볼게요.</strong>
                 </ChatBubble>
-                <SupportTypeSelector selectedTypes={selectedTypes} onToggleType={onToggleType} />
               </div>
             </div>
-            <div className="selected-summary">
-              {selectedTypes.length ? (
-                selectedTypes.map((typeId) => {
-                  const type = SUPPORT_TYPES.find((item) => item.id === typeId)
-                  return <span key={typeId}>{type?.shortLabel}</span>
-                })
-              ) : (
-                <span>관심 유형을 하나 이상 선택해 주세요.</span>
-              )}
-            </div>
-            <Button size="large" disabled={!selectedTypes.length} onClick={onComplete}>
+            <Button size="large" onClick={onComplete}>
               결과 확인하기
             </Button>
           </div>

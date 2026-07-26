@@ -79,7 +79,6 @@ export function FollowupQuestionPage({ user, onAuthExpired, onComplete }) {
       <SideChatPanel
         key={initialMessages.length}
         className="side-chat--full"
-        selectedTypes={[]}
         animateBotMessages
         isWaiting={isSessionLoading}
         initialMessages={initialMessages}

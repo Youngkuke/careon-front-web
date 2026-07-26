@@ -1,15 +1,9 @@
-import { useMemo } from 'react'
-import { SUPPORT_TYPES } from '../constants/supportTypes'
 import { ProgramCard } from '../components/programs/ProgramCard'
-import { ProgramSection } from '../components/programs/ProgramSection'
 import chatIconImg from '../assets/chaticon.webp'
 import noneSaveImg from '../assets/nonesave.webp'
 
-const SUPPORT_TYPE_ORDER = SUPPORT_TYPES.map((type) => type.id)
-
 export function ProgramListPage({
   programs,
-  selectedTypes,
   savedProgramIds,
   user,
   error,
@@ -17,12 +11,8 @@ export function ProgramListPage({
   onOpenProgram,
   onSaveProgram,
 }) {
-  const orderedTypes = selectedTypes.length ? selectedTypes : SUPPORT_TYPE_ORDER
-  const orderedPrograms = useMemo(() => (
-    [...programs].sort((a, b) => SUPPORT_TYPE_ORDER.indexOf(a.type) - SUPPORT_TYPE_ORDER.indexOf(b.type))
-  ), [programs])
   const savedPrograms = programs.filter((program) => savedProgramIds.includes(program.id))
-  const recommendedPrograms = orderedPrograms.filter((program) => !savedProgramIds.includes(program.id))
+  const recommendedPrograms = programs.filter((program) => !savedProgramIds.includes(program.id))
 
   return (
     <section className="programs-page programs-page--recommendation">
@@ -58,18 +48,19 @@ export function ProgramListPage({
           )}
         </section>
 
-        <div className="program-sections">
-          {orderedTypes.map((typeId) => (
-            <ProgramSection
-              key={typeId}
-              typeId={typeId}
-              programs={recommendedPrograms.filter((program) => program.type === typeId)}
-              savedProgramIds={savedProgramIds}
-              onOpenProgram={onOpenProgram}
-              onSaveProgram={onSaveProgram}
-            />
-          ))}
-        </div>
+        <section className="program-section">
+          <div className="program-list">
+            {recommendedPrograms.map((program) => (
+              <ProgramCard
+                key={program.id}
+                program={program}
+                saved={savedProgramIds.includes(program.id)}
+                onOpen={onOpenProgram}
+                onSave={onSaveProgram}
+              />
+            ))}
+          </div>
+        </section>
       </div>
     </section>
   )
