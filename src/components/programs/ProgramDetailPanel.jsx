@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { SUPPORT_TYPE_MAP } from '../../constants/supportTypes'
 import { Button } from '../common/Button'
 import { Modal } from '../common/Modal'
 
@@ -183,9 +182,6 @@ export function ProgramDetailPanel({ program, saved, user, onBack, onSave }) {
         </a>
       </div>
       <header className="detail-panel__title">
-        <div className="detail-panel__badges">
-          <span>{SUPPORT_TYPE_MAP[program.type]?.label}</span>
-        </div>
         <h1>{program.title}</h1>
         <p>{program.agency}</p>
       </header>

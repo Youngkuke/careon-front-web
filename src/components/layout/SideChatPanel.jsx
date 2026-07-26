@@ -30,7 +30,6 @@ function TypingMessage({ text, onProgress }) {
 
 export function SideChatPanel({
   userName,
-  selectedTypes = [],
   className = '',
   onBack,
   readOnly = false,
@@ -98,9 +97,7 @@ export function SideChatPanel({
       return
     }
 
-    const answer = selectedTypes.length
-      ? '선택한 관심 유형을 기준으로 카드에 있는 신청 방법, 필요 서류, 마감 정보를 먼저 확인하면 좋아요. 실제 신청 전에는 주관 기관 공고도 함께 확인해 주세요.'
-      : '관심 유형을 고르면 추천 범위를 좁힐 수 있어요. 지금은 전체 제도 기준으로 안내하고 있습니다.'
+    const answer = '카드에 있는 신청 방법, 필요 서류, 마감 정보를 먼저 확인하면 좋아요. 실제 신청 전에는 주관 기관 공고도 함께 확인해 주세요.'
 
     appendBotMessage(answer)
   }

@@ -7,7 +7,6 @@ import {
   getAccessToken,
   normalizeMatchedPolicyGroups,
   normalizePolicy,
-  selectedTypeIdsToApiIds,
   setAccessToken,
 } from './lib/api'
 import { Modal } from './components/common/Modal'
@@ -49,14 +48,6 @@ function AnalyzingPage({ complete }) {
   )
 }
 
-const readSessionTypes = () => {
-  try {
-    return JSON.parse(sessionStorage.getItem('careon:selectedTypes') || '[]')
-  } catch {
-    return []
-  }
-}
-
 const shouldShowFollowupFirst = () => (
   localStorage.getItem(FOLLOWUP_PENDING_KEY) === 'true'
   && localStorage.getItem(FOLLOWUP_COMPLETED_KEY) !== 'true'
@@ -89,7 +80,6 @@ function App() {
   const [view, setView] = useState(() => (isPasswordResetUrl() ? 'passwordReset' : 'onboarding'))
   const historyInitializedRef = useRef(false)
   const [answers, setAnswers] = useState({})
-  const [selectedTypes, setSelectedTypes] = useState(readSessionTypes)
   const [user, setUser] = useState(null)
   const [programs, setPrograms] = useState([])
   const [savedProgramIds, setSavedProgramIds] = useState([])
@@ -296,16 +286,6 @@ function App() {
     setAnswers((current) => ({ ...current, [questionId]: value }))
   }
 
-  const handleToggleType = (typeId) => {
-    setSelectedTypes((current) => {
-      const next = current.includes(typeId)
-        ? current.filter((id) => id !== typeId)
-        : [...current, typeId]
-      sessionStorage.setItem('careon:selectedTypes', JSON.stringify(next))
-      return next
-    })
-  }
-
   const handleSaveProgram = async (programId) => {
     if (!user) return
 
@@ -383,7 +363,6 @@ function App() {
       setInstallPromptInstalled(me.appInstalled)
       setInstallPromptSkipCount(me.installPromptCount || 0)
       await refreshSavedPolicies()
-      sessionStorage.setItem('careon:selectedTypes', JSON.stringify(selectedTypes))
       const nextView = needsFollowupDiagnosis(response, me) ? 'followup' : authNextView
       if (nextView === 'programs') {
         setShowRevisitModal(true)
@@ -413,7 +392,6 @@ function App() {
         password: form.password,
         region: form.district,
         termsAgreed: form.agreed,
-        interestPolicyTypeIds: selectedTypeIdsToApiIds(selectedTypes),
       })
       setAccessToken(response.accessToken)
       const me = await api.me()
@@ -487,8 +465,6 @@ function App() {
 
   const handleRestart = () => {
     setAnswers({})
-    setSelectedTypes([])
-    sessionStorage.removeItem('careon:selectedTypes')
     localStorage.removeItem(FOLLOWUP_PENDING_KEY)
     localStorage.removeItem(FOLLOWUP_COMPLETED_KEY)
     navigate('diagnosis')
@@ -550,9 +526,7 @@ function App() {
       return (
         <DiagnosisPage
           answers={answers}
-          selectedTypes={selectedTypes}
           onAnswer={handleAnswer}
-          onToggleType={handleToggleType}
           onComplete={() => {
             setAnalyzingNextView('result')
             setAnalyzingComplete(false)
@@ -572,7 +546,6 @@ function App() {
         <ResultPage
           eligible={eligible}
           answers={answers}
-          selectedTypes={selectedTypes}
           alternativePrograms={alternativePrograms}
           alternativesLoading={alternativesLoading}
           alternativesError={alternativesError}
@@ -650,7 +623,6 @@ function App() {
       return (
         <ProgramListPage
           programs={programs}
-          selectedTypes={selectedTypes}
           savedProgramIds={savedProgramIds}
           user={user}
           error={apiError}
@@ -666,7 +638,6 @@ function App() {
       return (
         <ProgramChatPage
           user={user}
-          selectedTypes={selectedTypes}
           onAuthExpired={handleAuthExpired}
           onMatchedPoliciesRefresh={refreshProgramData}
           onBack={() => navigate('programs')}
@@ -680,7 +651,6 @@ function App() {
           program={activeProgram}
           saved={savedProgramIds.includes(activeProgramId)}
           user={user}
-          selectedTypes={selectedTypes}
           onBack={() => navigate('programs')}
           onSaveProgram={handleSaveProgram}
         />
