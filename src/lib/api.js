@@ -458,9 +458,7 @@ export const api = {
     agency_id: firstDefined(params.agency_id, params.agencyId),
     keyword: params.keyword,
   })}`),
-  getAlternatives: (interestTypeIds) => request(
-    `/api/web/policies/alternatives?interest_policy_type_ids=${encodeURIComponent(interestTypeIds.join(','))}`,
-  ),
+  getAlternatives: () => request('/api/web/policies/alternatives'),
   getMatchedPolicies: () => request('/api/web/policies/matched', { auth: true }),
   getPolicyDetail: (policyId) => request(`/api/web/policies/${policyId}`),
   getSavedPolicies: () => request('/api/web/users/me/saved-policies', { auth: true }),
