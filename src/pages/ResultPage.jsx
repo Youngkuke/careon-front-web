@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { DIAGNOSIS_QUESTIONS } from '../constants/diagnosisQuestions'
-import { SUPPORT_TYPE_MAP } from '../constants/supportTypes'
-import { OverflowText, ProgramCard } from '../components/programs/ProgramCard'
+import { ProgramCard } from '../components/programs/ProgramCard'
 import { Button } from '../components/common/Button'
 import { ChatBubble } from '../components/diagnosis/ChatBubble'
 
@@ -18,15 +17,10 @@ const MULTIPLE_INELIGIBLE_MESSAGE = '서울시 가족돌봄청년 지원은 지�
 const FINAL_INELIGIBLE_MESSAGE = '저희는 여기까지 안내해 드릴 수 있어요.\n또 필요한 순간이 오면, 그때 다시 찾아주세요.'
 
 function AlternativeWelfareCard({ program }) {
-  const type = SUPPORT_TYPE_MAP[program.type]
-
   return (
     <article className="welfare-link-card">
-      <div className="program-card__meta">
-        <span>{type?.shortLabel}</span>
-      </div>
-      <OverflowText as="h3" className="program-card__title">{program.title}</OverflowText>
-      <OverflowText as="p" className="program-card__summary">{program.summary}</OverflowText>
+      <h3 className="program-card__title">{program.title}</h3>
+      <p className="program-card__summary">{program.summary}</p>
       <a href={program.url} target="_blank" rel="noreferrer">
         제도 링크 보기
       </a>
@@ -37,7 +31,6 @@ function AlternativeWelfareCard({ program }) {
 export function ResultPage({
   eligible,
   answers,
-  selectedTypes,
   alternativePrograms,
   alternativesLoading,
   alternativesError,
@@ -54,12 +47,6 @@ export function ResultPage({
     ? MULTIPLE_INELIGIBLE_MESSAGE
     : INELIGIBLE_MESSAGES[failedQuestions[0]?.id]
   const showAlternativeCards = failedQuestions.length > 0
-  const selectedTypeLabels = selectedTypes
-    .map((typeId) => SUPPORT_TYPE_MAP[typeId]?.shortLabel)
-    .filter(Boolean)
-  const selectedTypeText = selectedTypeLabels.length
-    ? selectedTypeLabels.slice(0, 2).map((label) => `[${label}]`).join('와 ')
-    : '[관심]'
 
   useEffect(() => {
     if (!logRef.current) return
@@ -102,10 +89,7 @@ export function ResultPage({
           <div className="conversation-log" ref={logRef}>
             <div className="conversation-turn">
               <ChatBubble>
-                <strong>
-                  사용자님은 가족돌봄청년에 해당돼요!<br />
-                  특히 궁금해하신 {selectedTypeText} 유형을 중심으로 제도를 찾아드릴게요.
-                </strong>
+                <strong className="result-eligible-message">가족돌봄청년에 해당돼요!</strong>
               </ChatBubble>
               <ChatBubble>
                 <strong>
