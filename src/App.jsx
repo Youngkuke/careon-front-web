@@ -213,7 +213,7 @@ function App() {
     setAlternativesError('')
 
     try {
-      const alternatives = await api.getAlternatives(selectedTypeIdsToApiIds(selectedTypes))
+      const alternatives = await api.getAlternatives()
       setAlternativePrograms(alternatives.map(normalizePolicy))
     } catch (error) {
       setAlternativePrograms([])
@@ -221,7 +221,7 @@ function App() {
     } finally {
       setAlternativesLoading(false)
     }
-  }, [selectedTypes])
+  }, [])
 
   useEffect(() => {
     if (!getAccessToken()) return
