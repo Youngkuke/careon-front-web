@@ -194,23 +194,25 @@ export function ProgramDetailPanel({ program, saved, user, onBack, onSave }) {
           </div>
         ))}
       </dl>
-      <section className="detail-section">
-        <h2>필요 서류</h2>
-        <div className="detail-document-list">
-          {program.documents.map((document) => (
-            <button
-              className="detail-document-card"
-              type="button"
-              key={document}
-              aria-haspopup="dialog"
-              onClick={() => setSelectedDocument(document)}
-            >
-              <strong>{document}</strong>
-              <span>발급 방법 보기</span>
-            </button>
-          ))}
-        </div>
-      </section>
+      {program.documents.length ? (
+        <section className="detail-section">
+          <h2>필요 서류</h2>
+          <div className="detail-document-list">
+            {program.documents.map((document) => (
+              <button
+                className="detail-document-card"
+                type="button"
+                key={document}
+                aria-haspopup="dialog"
+                onClick={() => setSelectedDocument(document)}
+              >
+                <strong>{document}</strong>
+                <span>발급 방법 보기</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : null}
       <div className="detail-panel__actions">
         <Button className={`detail-save-button ${saved ? 'is-saved' : ''}`} disabled={!user} onClick={handleSaveClick}>
           {saved ? '마감일 알림 받는 중' : '마감일 알림 받기'}

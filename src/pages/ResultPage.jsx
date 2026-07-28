@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { DIAGNOSIS_QUESTIONS } from '../constants/diagnosisQuestions'
-import { ProgramCard } from '../components/programs/ProgramCard'
 import { Button } from '../components/common/Button'
 import { ChatBubble } from '../components/diagnosis/ChatBubble'
 
@@ -34,11 +33,9 @@ export function ResultPage({
   alternativePrograms,
   alternativesLoading,
   alternativesError,
-  savedProgramIds,
   onLoadAlternatives,
   onAuth,
   onSignup,
-  onOpenProgram,
 }) {
   const [showSkippedPrograms, setShowSkippedPrograms] = useState(false)
   const logRef = useRef(null)
@@ -47,7 +44,6 @@ export function ResultPage({
     ? MULTIPLE_INELIGIBLE_MESSAGE
     : INELIGIBLE_MESSAGES[failedQuestions[0]?.id]
   const showAlternativeCards = failedQuestions.length > 0
-
   useEffect(() => {
     if (!logRef.current) return
     logRef.current.scrollTo({
@@ -114,23 +110,15 @@ export function ResultPage({
             {showSkippedPrograms ? (
               <div className="conversation-turn">
                 <ChatBubble>
-                  <strong>괜찮아요. 선택하신 유형을 바탕으로 맞을 것 같은 제도들을 찾아봤어요.</strong>
+                  <strong>괜찮아요. 지금 도움이 될 수 있는 제도들을 찾아봤어요.</strong>
                 </ChatBubble>
                 <div className="alternative-list alternative-list--chat">
                   {renderAlternativeState() || alternativePrograms.map((program) => (
-                    <ProgramCard
-                      key={program.id}
-                      program={program}
-                      saved={savedProgramIds.includes(program.id)}
-                      onOpen={onOpenProgram}
-                    />
+                    <AlternativeWelfareCard key={program.id} program={program} />
                   ))}
                 </div>
                 <ChatBubble>
-                  <strong>
-                    결과를 저장하고 더 정확한 제도를 찾아드리려면 로그인이 필요해요.<br />
-                    나중에 다시 오셔도 언제든 도와드릴게요.
-                  </strong>
+                  <strong>결과를 저장하고 더 정확한 제도를 찾아드리려면 로그인이 필요해요.</strong>
                 </ChatBubble>
               </div>
             ) : null}
