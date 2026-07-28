@@ -3,6 +3,7 @@ import { SUPPORT_TYPES } from '../constants/supportTypes'
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
 const AI_API_BASE_URL = import.meta.env.VITE_AI_API_BASE_URL || API_BASE_URL
 const TOKEN_KEY = 'careon:webAccessToken'
+const SAVED_POLICIES_PATH = '/api/web/users/me/saved-policies'
 
 const DEFAULT_TYPE_ID = SUPPORT_TYPES[0]?.id || 'living'
 
@@ -104,22 +105,6 @@ function resolveErrorMessage(data) {
   return data?.message || '요청을 처리하지 못했어요.'
 }
 
-function toCsv(value) {
-  return Array.isArray(value) ? value.join(',') : value
-}
-
-function buildQuery(params = {}) {
-  const searchParams = new URLSearchParams()
-
-  Object.entries(params).forEach(([key, value]) => {
-    if (value === undefined || value === null || value === '') return
-    searchParams.set(key, toCsv(value))
-  })
-
-  const query = searchParams.toString()
-  return query ? `?${query}` : ''
-}
-
 function normalizeCared(item = {}) {
   return {
     caredId: firstDefined(item.cared_id, item.caredId),
@@ -195,6 +180,115 @@ function normalizeChatState(item = {}) {
     currentPhase: firstDefined(item.current_phase, item.currentPhase),
     activePolicyId: firstDefined(item.active_policy_id, item.activePolicyId),
     updatedAt: firstDefined(item.updated_at, item.updatedAt),
+  }
+}
+
+function normalizeCbThread(item = {}) {
+  return {
+    threadId: firstDefined(item.thread_id, item.threadId),
+    phase: item.phase,
+    message: item.message,
+  }
+}
+
+function normalizeCbMessage(item = {}) {
+  return {
+    threadId: firstDefined(item.thread_id, item.threadId),
+    phase: item.phase,
+    message: item.message,
+    filters: firstDefined(item.filters, {}),
+    intake: firstDefined(item.intake, {}),
+    resultSummary: firstDefined(item.result_summary, item.resultSummary),
+  }
+}
+
+function normalizeLatestCbThread(item = {}) {
+  return {
+    threadId: firstDefined(item.thread_id, item.threadId),
+    phase: item.phase,
+    generatedAt: firstDefined(item.generated_at, item.generatedAt),
+    resultSummary: firstDefined(item.result_summary, item.resultSummary),
+  }
+}
+
+function normalizeCbInstitution(item = {}) {
+  const servId = firstDefined(item.serv_id, item.servId)
+  const region = firstDefined(item.region, {})
+  const tags = firstDefined(item.tags, {})
+  const support = firstDefined(item.support, {})
+  const apply = firstDefined(item.apply, {})
+
+  return {
+    id: servId,
+    servId,
+    source: 'cb',
+    title: firstDefined(item.name, '이름 없는 제도'),
+    agency: firstDefined(item.agency, '담당 기관 확인 필요'),
+    summary: firstDefined(item.summary, '상세 내용을 확인해 주세요.'),
+    url: firstDefined(item.link, ''),
+    period: firstDefined(support.cycle, '공식 안내 확인'),
+    cost: firstDefined(support.provision_type, support.provisionType, '공식 안내 확인'),
+    deadline: '공식 안내 확인',
+    method: firstDefined(apply.method_name, apply.methodName, item.apply_method, item.applyMethod, '공식 안내 확인'),
+    resultTime: '공식 안내 확인',
+    documents: [],
+    documentDetails: [],
+    documentGuide: '공식 안내에서 필요 서류를 확인해 주세요.',
+    note: region.label ? `지원 지역: ${region.label}` : '세부 조건은 공식 안내를 확인해 주세요.',
+    duplicateRule: '중복 지원 가능 여부는 담당 기관에 확인해 주세요.',
+    isActive: firstDefined(item.is_active, item.isActive),
+    region: {
+      scope: region.scope,
+      label: region.label,
+      ctpvName: firstDefined(region.ctpv_nm, region.ctpvName),
+      sggName: firstDefined(region.sgg_nm, region.sggName),
+    },
+    tags: {
+      lifeCycle: firstDefined(tags.life_cycle, tags.lifeCycle, []),
+      household: firstDefined(tags.household, []),
+      theme: firstDefined(tags.theme, []),
+    },
+    support: {
+      cycle: support.cycle,
+      provisionType: firstDefined(support.provision_type, support.provisionType),
+    },
+    apply: {
+      methodName: firstDefined(apply.method_name, apply.methodName),
+      contact: apply.contact,
+    },
+    targetDetail: firstDefined(item.target_detail, item.targetDetail),
+    selectCriteria: firstDefined(item.select_criteria, item.selectCriteria),
+    serviceContent: firstDefined(item.service_content, item.serviceContent),
+    applyMethod: firstDefined(item.apply_method, item.applyMethod),
+    criteriaYear: firstDefined(item.criteria_year, item.criteriaYear),
+  }
+}
+
+function normalizeCbSection(section = {}) {
+  const institutions = firstDefined(section.institutions, []).map(normalizeCbInstitution)
+
+  return {
+    title: section.title,
+    count: firstDefined(section.count, institutions.length),
+    institutions,
+  }
+}
+
+function normalizeCbResults(item = {}) {
+  const region = firstDefined(item.region, {})
+
+  return {
+    threadId: firstDefined(item.thread_id, item.threadId),
+    generatedAt: firstDefined(item.generated_at, item.generatedAt),
+    region: {
+      sgg: region.sgg,
+      source: region.source,
+    },
+    filters: firstDefined(item.filters, {}),
+    relaxedAxes: firstDefined(item.relaxed_axes, item.relaxedAxes, []),
+    banner: normalizeCbSection(item.banner),
+    matched: normalizeCbSection(item.matched),
+    maybe: normalizeCbSection(item.maybe),
   }
 }
 
@@ -320,7 +414,8 @@ function resolvePolicyType(item) {
 }
 
 export function normalizePolicy(item) {
-  const id = normalizePolicyId(firstDefined(item.policy_id, item.policyId, item.id))
+  const servId = firstDefined(item.serv_id, item.servId)
+  const id = normalizePolicyId(firstDefined(item.policy_id, item.policyId, item.id, servId))
   const documents = firstDefined(item.documents, item.required_documents, item.requiredDocuments, [])
   const deadline = firstDefined(item.application_deadline, item.applicationDeadline, item.deadline)
   const resultDate = firstDefined(item.result_date, item.resultDate, item.result_note, item.resultNote)
@@ -329,6 +424,10 @@ export function normalizePolicy(item) {
 
   return {
     id,
+    servId,
+    source: servId ? 'cb' : 'registered',
+    isActive: firstDefined(item.is_active, item.isActive),
+    regionName: firstDefined(item.region_name, item.regionName),
     type: resolvePolicyType(item),
     status: deadline ? '모집중' : '상시',
     title: firstDefined(item.policy_name, item.policyName, item.name, item.title),
@@ -354,16 +453,6 @@ export function normalizePolicy(item) {
     category: item.category,
     policyTypes: normalizePolicyTypes(firstDefined(item.policy_types, item.policyTypes, [])),
   }
-}
-
-export function normalizeMatchedPolicyGroups(groups = []) {
-  return groups.flatMap((group) => (
-    group.policies || []
-  ).map((policy) => normalizePolicy({
-    ...policy,
-    policy_type_id: firstDefined(policy.policy_type_id, group.policy_type_id, group.policyTypeId),
-    policy_type_name: firstDefined(policy.policy_type_name, group.policy_type_name, group.type_name, group.policyTypeName),
-  })))
 }
 
 export function selectedTypeIdsToApiIds(selectedTypes) {
@@ -452,22 +541,15 @@ export const api = {
     body: { interest_policy_type_ids: interestPolicyTypeIds },
     auth: true,
   }),
-  getPolicies: (params = {}) => request(`/api/web/policies${buildQuery({
-    category: params.category,
-    policy_type_ids: firstDefined(params.policy_type_ids, params.policyTypeIds),
-    agency_id: firstDefined(params.agency_id, params.agencyId),
-    keyword: params.keyword,
-  })}`),
   getAlternatives: () => request('/api/web/policies/alternatives'),
-  getMatchedPolicies: () => request('/api/web/policies/matched', { auth: true }),
   getPolicyDetail: (policyId) => request(`/api/web/policies/${policyId}`),
-  getSavedPolicies: () => request('/api/web/users/me/saved-policies', { auth: true }),
-  savePolicy: (policyId) => request('/api/web/users/me/saved-policies', {
+  getSavedPolicies: () => request(SAVED_POLICIES_PATH, { auth: true }),
+  savePolicy: (servId) => request(SAVED_POLICIES_PATH, {
     method: 'POST',
-    body: { policy_id: policyId },
+    body: { serv_id: servId },
     auth: true,
   }),
-  cancelSavedPolicy: (savedPolicyId) => request(`/api/web/users/me/saved-policies/${savedPolicyId}`, {
+  cancelSavedPolicy: (savedPolicyId) => request(`${SAVED_POLICIES_PATH}/${savedPolicyId}`, {
     method: 'DELETE',
     auth: true,
   }),
@@ -515,6 +597,32 @@ export const api = {
   },
   translatePolicy: (policyId) => aiRequest(`/api/v1/policies/${policyId}/translate`, {
     method: 'POST',
+    auth: true,
+  }),
+  createCbThread: async () => normalizeCbThread(await aiRequest('/api/v1/cb/threads', {
+    method: 'POST',
+    auth: true,
+  })),
+  getLatestCbThread: async () => normalizeLatestCbThread(await aiRequest('/api/v1/cb/threads/latest', {
+    auth: true,
+  })),
+  sendCbMessage: async (threadId, message) => normalizeCbMessage(await aiRequest('/api/v1/cb/messages', {
+    method: 'POST',
+    body: { thread_id: threadId, message },
+    auth: true,
+  })),
+  getCbResults: async (threadId) => normalizeCbResults(await aiRequest(`/api/v1/cb/threads/${encodeURIComponent(threadId)}/results`, {
+    auth: true,
+  })),
+  getCbInstitution: async (servId) => normalizeCbInstitution(await aiRequest(`/api/v1/cb/institutions/${encodeURIComponent(servId)}`, {
+    auth: true,
+  })),
+  translateCbInstitution: (servId) => aiRequest(`/api/v1/cb/institutions/${encodeURIComponent(servId)}/translate`, {
+    method: 'POST',
+    auth: true,
+  }),
+  deleteCbThread: (threadId) => aiRequest(`/api/v1/cb/threads/${encodeURIComponent(threadId)}`, {
+    method: 'DELETE',
     auth: true,
   }),
   getDocumentHistory: async () => (await request('/api/web/users/me/document-history', { auth: true })).map(normalizeDocumentHistory),

@@ -36,6 +36,7 @@ export function SideChatPanel({
   animateBotMessages = false,
   isWaiting = false,
   title = '',
+  headerAction,
   initialMessages,
   onSubmitMessage,
 }) {
@@ -115,14 +116,14 @@ export function SideChatPanel({
 
   return (
     <aside className={`side-chat ${className}`} aria-label="추천 제도 상담">
-      {title || onBack ? (
+      {title || onBack || headerAction ? (
         <div className="side-chat__header">
           {title ? <strong>{title}</strong> : <span />}
-          {onBack ? (
+          {headerAction || (onBack ? (
             <Button variant="secondary" size="small" onClick={onBack}>
               돌아가기
             </Button>
-          ) : null}
+          ) : null)}
         </div>
       ) : null}
       <div className="side-chat__messages" ref={messagesRef}>

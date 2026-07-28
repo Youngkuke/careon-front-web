@@ -7,12 +7,20 @@ export function ProgramListPage({
   savedProgramIds,
   user,
   error,
+  splitRecommendations,
+  recommendationsLoading,
   onOpenChat,
   onOpenProgram,
   onSaveProgram,
 }) {
   const savedPrograms = programs.filter((program) => savedProgramIds.includes(program.id))
   const recommendedPrograms = programs.filter((program) => !savedProgramIds.includes(program.id))
+  const matchedPrograms = splitRecommendations
+    ? recommendedPrograms.filter((program) => program.recommendationSection !== 'maybe')
+    : recommendedPrograms
+  const maybePrograms = splitRecommendations
+    ? recommendedPrograms.filter((program) => program.recommendationSection === 'maybe')
+    : []
 
   return (
     <section className="programs-page programs-page--recommendation">
@@ -24,6 +32,9 @@ export function ProgramListPage({
 
         <section className={`selected-programs ${savedPrograms.length ? 'has-items' : 'is-empty'}`}>
           <button className="selected-programs__chat-button" type="button" onClick={onOpenChat} aria-label="상담 채팅 열기">
+            <span className="selected-programs__chat-prompt" aria-hidden="true">
+              혹시 더 필요한게 있으실까요?
+            </span>
             <span className="selected-programs__chat-avatar">
               <img src={chatIconImg} alt="" aria-hidden="true" />
             </span>
@@ -49,18 +60,54 @@ export function ProgramListPage({
         </section>
 
         <section className="program-section">
-          <div className="program-list">
-            {recommendedPrograms.map((program) => (
-              <ProgramCard
-                key={program.id}
-                program={program}
-                saved={savedProgramIds.includes(program.id)}
-                onOpen={onOpenProgram}
-                onSave={onSaveProgram}
-              />
-            ))}
-          </div>
+          {splitRecommendations || recommendationsLoading ? (
+            <div className="program-section__heading">
+              <h2>이런 제도들을 추천드려요!</h2>
+            </div>
+          ) : null}
+          {recommendationsLoading ? (
+            <div className="program-list__loading" role="status" aria-label="맞춤 제도를 불러오는 중입니다">
+              <span className="program-list__loading-spinner" aria-hidden="true" />
+            </div>
+          ) : (
+            <div className="program-list">
+              {matchedPrograms.map((program) => (
+                <ProgramCard
+                  key={program.id}
+                  program={program}
+                  saved={savedProgramIds.includes(program.id)}
+                  onOpen={onOpenProgram}
+                  onSave={onSaveProgram}
+                />
+              ))}
+            </div>
+          )}
         </section>
+
+        {splitRecommendations && !recommendationsLoading && maybePrograms.length ? (
+          <section className="program-section program-section--maybe">
+            <div className="program-section__heading">
+              <h2>이런 제도들은 어떠세요?</h2>
+              <span>{maybePrograms.length}개 · 좌우로 넘겨보세요</span>
+            </div>
+            <div
+              className="program-list program-list--horizontal"
+              role="region"
+              aria-label="이런 제도들은 어떠세요?"
+              tabIndex="0"
+            >
+              {maybePrograms.map((program) => (
+                <ProgramCard
+                  key={program.id}
+                  program={program}
+                  saved={savedProgramIds.includes(program.id)}
+                  onOpen={onOpenProgram}
+                  onSave={onSaveProgram}
+                />
+              ))}
+            </div>
+          </section>
+        ) : null}
       </div>
     </section>
   )
