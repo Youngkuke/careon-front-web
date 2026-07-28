@@ -3,13 +3,6 @@ import { Button } from '../components/common/Button'
 import { SideChatPanel } from '../components/layout/SideChatPanel'
 import { api } from '../lib/api'
 
-const createInitialMessages = (userName) => [
-  {
-    from: 'bot',
-    text: `${userName || '사용자'}님 상황이 바뀌었다면 편하게 말씀해 주세요. 소득, 주거, 돌봄 시간, 가족 구성처럼 달라진 내용을 반영해 다시 살펴볼게요.`,
-  },
-]
-
 const READY_TRANSITION_DELAY = 3000
 
 const waitForReadyTransition = () => new Promise((resolve) => {
@@ -24,7 +17,7 @@ export function ProgramChatPage({
 }) {
   const [threadId, setThreadId] = useState('')
   const [isSessionLoading, setIsSessionLoading] = useState(Boolean(user?.carerId))
-  const [initialMessages, setInitialMessages] = useState(() => createInitialMessages(user?.name))
+  const [initialMessages, setInitialMessages] = useState([])
 
   useEffect(() => {
     let ignore = false

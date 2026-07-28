@@ -152,7 +152,7 @@ export function ProgramDetailPanel({ program, saved, user, onBack, onSave }) {
     ['신청 방법', program.method],
     ['신청 기간', program.deadline],
     ['결과 발표일', program.resultTime],
-    ['문의처', program.agency],
+    ['문의처', program.contact || program.agency],
   ]
   const selectedDocumentGuide = selectedDocument ? getDocumentGuide(selectedDocument, program) : null
 

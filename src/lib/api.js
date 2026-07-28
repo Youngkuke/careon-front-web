@@ -217,6 +217,14 @@ function normalizeCbInstitution(item = {}) {
   const tags = firstDefined(item.tags, {})
   const support = firstDefined(item.support, {})
   const apply = firstDefined(item.apply, {})
+  const documents = firstDefined(item.required_forms, item.requiredForms, item.documents, [])
+  const applyPeriodStart = firstDefined(item.apply_period_start, item.applyPeriodStart)
+  const applyDeadline = firstDefined(item.apply_deadline, item.applyDeadline, item.application_deadline, item.applicationDeadline, item.deadline)
+  const applicationPeriod = [
+    normalizeDateLabel(applyPeriodStart, ''),
+    normalizeDateLabel(applyDeadline, ''),
+  ].filter(Boolean).join(' ~ ')
+  const resultDate = firstDefined(item.result_announcement_date, item.resultAnnouncementDate, item.result_date, item.resultDate, item.result_note, item.resultNote)
 
   return {
     id: servId,
@@ -225,14 +233,15 @@ function normalizeCbInstitution(item = {}) {
     title: firstDefined(item.name, '이름 없는 제도'),
     agency: firstDefined(item.agency, '담당 기관 확인 필요'),
     summary: firstDefined(item.summary, '상세 내용을 확인해 주세요.'),
-    url: firstDefined(item.link, ''),
-    period: firstDefined(support.cycle, '공식 안내 확인'),
-    cost: firstDefined(support.provision_type, support.provisionType, '공식 안내 확인'),
-    deadline: '공식 안내 확인',
-    method: firstDefined(apply.method_name, apply.methodName, item.apply_method, item.applyMethod, '공식 안내 확인'),
-    resultTime: '공식 안내 확인',
-    documents: [],
-    documentDetails: [],
+    url: firstDefined(item.detail_link, item.detailLink, item.link, ''),
+    period: firstDefined(item.support_cycle, item.supportCycle, support.cycle, '공식 안내 확인'),
+    cost: firstDefined(item.provision_type_badge, item.provisionTypeBadge, support.provision_type, support.provisionType, '공식 안내 확인'),
+    deadline: applicationPeriod || '공식 안내 확인',
+    method: firstDefined(item.apply_method_nm, item.applyMethodNm, '공식 안내 확인'),
+    resultTime: normalizeDateLabel(resultDate, '공식 안내 확인'),
+    contact: firstDefined(item.contact, item.contact_info, item.contactInfo),
+    documents: normalizeDocuments(documents),
+    documentDetails: documents,
     documentGuide: '공식 안내에서 필요 서류를 확인해 주세요.',
     note: region.label ? `지원 지역: ${region.label}` : '세부 조건은 공식 안내를 확인해 주세요.',
     duplicateRule: '중복 지원 가능 여부는 담당 기관에 확인해 주세요.',
@@ -249,8 +258,8 @@ function normalizeCbInstitution(item = {}) {
       theme: firstDefined(tags.theme, []),
     },
     support: {
-      cycle: support.cycle,
-      provisionType: firstDefined(support.provision_type, support.provisionType),
+      cycle: firstDefined(item.support_cycle, item.supportCycle, support.cycle),
+      provisionType: firstDefined(item.provision_type_badge, item.provisionTypeBadge, support.provision_type, support.provisionType),
     },
     apply: {
       methodName: firstDefined(apply.method_name, apply.methodName),
@@ -259,7 +268,8 @@ function normalizeCbInstitution(item = {}) {
     targetDetail: firstDefined(item.target_detail, item.targetDetail),
     selectCriteria: firstDefined(item.select_criteria, item.selectCriteria),
     serviceContent: firstDefined(item.service_content, item.serviceContent),
-    applyMethod: firstDefined(item.apply_method, item.applyMethod),
+    applyMethod: firstDefined(item.apply_method_detail, item.applyMethodDetail, item.apply_method, item.applyMethod),
+    applyGuideEasy: firstDefined(item.apply_guide_easy, item.applyGuideEasy),
     criteriaYear: firstDefined(item.criteria_year, item.criteriaYear),
   }
 }

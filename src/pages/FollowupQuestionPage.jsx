@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Button } from '../components/common/Button'
 import { SideChatPanel } from '../components/layout/SideChatPanel'
 import { api } from '../lib/api'
 
@@ -90,17 +91,17 @@ export function FollowupQuestionPage({ user, onAuthExpired, onResultsReady, onGo
 
   return (
     <section className="program-chat-page">
+      {onGoHome ? (
+        <Button className="program-chat-page__back" variant="secondary" size="small" onClick={onGoHome}>
+          메인으로
+        </Button>
+      ) : null}
       <SideChatPanel
         key={initialMessages.length}
         className="side-chat--full"
         animateBotMessages
         isWaiting={isSessionLoading}
         initialMessages={initialMessages}
-        headerAction={onGoHome ? (
-          <button className="side-chat__home" type="button" onClick={onGoHome}>
-            메인으로
-          </button>
-        ) : null}
         onSubmitMessage={handleSubmitMessage}
       />
     </section>
