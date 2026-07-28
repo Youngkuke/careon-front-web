@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 import { REQUIRED_DIAGNOSIS_IDS } from './constants/diagnosisQuestions'
 import {
@@ -10,23 +10,23 @@ import {
 } from './lib/api'
 import { Modal } from './components/common/Modal'
 import { PageShell } from './components/layout/PageShell'
-import { AuthPage } from './pages/AuthPage'
-import { DiagnosisPage } from './pages/DiagnosisPage'
-import { FollowupQuestionPage } from './pages/FollowupQuestionPage'
-import { MyPage } from './pages/MyPage'
-import { OnboardingPage } from './pages/OnboardingPage'
-import { PasswordResetPage } from './pages/PasswordResetPage'
-import { ProgramChatPage } from './pages/ProgramChatPage'
-import { ProgramDetailPage } from './pages/ProgramDetailPage'
-import { ProgramListPage } from './pages/ProgramListPage'
-import { ResultPage } from './pages/ResultPage'
-import { SignupPage } from './pages/SignupPage'
 import endLoadingImg from './assets/endloading.webp'
 import startLoadingImg from './assets/startloading.webp'
 
 const FOLLOWUP_PENDING_KEY = 'careon:followupPending'
 const FOLLOWUP_COMPLETED_KEY = 'careon:followupCompleted'
-const NEW_SIGNUP_FOLLOWUP_KEY = 'careon:newSignupFollowup'
+
+const AuthPage = lazy(() => import('./pages/AuthPage').then(({ AuthPage: Page }) => ({ default: Page })))
+const DiagnosisPage = lazy(() => import('./pages/DiagnosisPage').then(({ DiagnosisPage: Page }) => ({ default: Page })))
+const FollowupQuestionPage = lazy(() => import('./pages/FollowupQuestionPage').then(({ FollowupQuestionPage: Page }) => ({ default: Page })))
+const MyPage = lazy(() => import('./pages/MyPage').then(({ MyPage: Page }) => ({ default: Page })))
+const OnboardingPage = lazy(() => import('./pages/OnboardingPage').then(({ OnboardingPage: Page }) => ({ default: Page })))
+const PasswordResetPage = lazy(() => import('./pages/PasswordResetPage').then(({ PasswordResetPage: Page }) => ({ default: Page })))
+const ProgramChatPage = lazy(() => import('./pages/ProgramChatPage').then(({ ProgramChatPage: Page }) => ({ default: Page })))
+const ProgramDetailPage = lazy(() => import('./pages/ProgramDetailPage').then(({ ProgramDetailPage: Page }) => ({ default: Page })))
+const ProgramListPage = lazy(() => import('./pages/ProgramListPage').then(({ ProgramListPage: Page }) => ({ default: Page })))
+const ResultPage = lazy(() => import('./pages/ResultPage').then(({ ResultPage: Page }) => ({ default: Page })))
+const SignupPage = lazy(() => import('./pages/SignupPage').then(({ SignupPage: Page }) => ({ default: Page })))
 
 function AnalyzingPage({ complete }) {
   return (
@@ -48,13 +48,26 @@ function AnalyzingPage({ complete }) {
   )
 }
 
+function SessionRestorePage() {
+  return (
+    <section className="flow-page">
+      <div className="flow-card analyzing-card">
+        <div className="loading-spinner" aria-hidden="true">
+          <svg className="loading-spinner__ring" viewBox="0 0 120 120">
+            <circle className="loading-spinner__track" cx="60" cy="60" r="51" />
+            <circle className="loading-spinner__progress" cx="60" cy="60" r="51" />
+          </svg>
+          <img className="loading-spinner__icon" src={startLoadingImg} alt="" />
+        </div>
+        <h1 className="analyzing-message">맞춤 제도를 불러오고 있어요</h1>
+      </div>
+    </section>
+  )
+}
+
 const shouldShowFollowupFirst = () => (
   localStorage.getItem(FOLLOWUP_PENDING_KEY) === 'true'
   && localStorage.getItem(FOLLOWUP_COMPLETED_KEY) !== 'true'
-)
-
-const isNewSignupFollowup = () => (
-  sessionStorage.getItem(NEW_SIGNUP_FOLLOWUP_KEY) === 'true'
 )
 
 const needsFollowupDiagnosis = (loginResponse, me) => (
@@ -115,6 +128,8 @@ const withProgramDetail = (programs, programId, detail) => programs.map((program
   program.id === programId ? {
     ...program,
     ...detail,
+    deadline: detail.deadline === '공식 안내 확인' ? program.deadline : detail.deadline,
+    resultTime: detail.resultTime === '공식 안내 확인' ? program.resultTime : detail.resultTime,
     source: program.source || detail.source,
     matchedPolicyId: detail.matchedPolicyId ?? program.matchedPolicyId,
     matchGroup: detail.matchGroup ?? program.matchGroup,
@@ -136,8 +151,13 @@ const clearPasswordResetUrl = () => {
 }
 
 function App() {
-  const [view, setView] = useState(() => (isPasswordResetUrl() ? 'passwordReset' : 'onboarding'))
+  const [view, setView] = useState(() => {
+    if (isPasswordResetUrl()) return 'passwordReset'
+    return getAccessToken() ? 'restoringSession' : 'onboarding'
+  })
   const historyInitializedRef = useRef(false)
+  const detailCacheRef = useRef(new Map())
+  const openingProgramRef = useRef(false)
   const [answers, setAnswers] = useState({})
   const [user, setUser] = useState(null)
   const [recommendedPrograms, setRecommendedPrograms] = useState([])
@@ -146,6 +166,8 @@ function App() {
   const [savedPolicyIdByProgramId, setSavedPolicyIdByProgramId] = useState({})
   const [activeProgramId, setActiveProgramId] = useState(null)
   const [activeAlternativeProgram, setActiveAlternativeProgram] = useState(null)
+  const [showProgramDetail, setShowProgramDetail] = useState(false)
+  const [openingProgramId, setOpeningProgramId] = useState(null)
   const [cbResults, setCbResults] = useState(null)
   const [recommendationsLoading, setRecommendationsLoading] = useState(false)
   const [installPromptSkipCount, setInstallPromptSkipCount] = useState(0)
@@ -200,10 +222,12 @@ function App() {
     setRecommendedPrograms([])
     setSavedPrograms([])
     setActiveAlternativeProgram(null)
+    setShowProgramDetail(false)
     setCbResults(null)
     setRecommendationsLoading(false)
     setAlternativePrograms([])
     setAlternativesError('')
+    detailCacheRef.current.clear()
   }, [])
 
   const handleAuthExpired = useCallback(() => {
@@ -263,13 +287,16 @@ function App() {
         setUser(me)
         setInstallPromptInstalled(me.appInstalled)
         setInstallPromptSkipCount(me.installPromptCount || 0)
-        const latestCbResults = await restoreLatestCbResults()
-        await refreshSavedPolicies()
+        const [latestCbResults] = await Promise.all([
+          restoreLatestCbResults(),
+          refreshSavedPolicies(),
+        ])
         if (!isPasswordResetUrl()) {
           setView(latestCbResults ? 'programs' : (me.diagnosisCompleted === false ? 'followup' : 'programs'))
         }
       } catch {
         clearAccessToken()
+        if (!isPasswordResetUrl()) setView('onboarding')
       }
     }
 
@@ -400,14 +427,15 @@ function App() {
 
     try {
       const response = await api.login(form)
-      sessionStorage.removeItem(NEW_SIGNUP_FOLLOWUP_KEY)
       setAccessToken(response.accessToken)
       const me = await api.me()
       setUser(me)
       setInstallPromptInstalled(me.appInstalled)
       setInstallPromptSkipCount(me.installPromptCount || 0)
-      const latestCbResults = await restoreLatestCbResults()
-      await refreshSavedPolicies()
+      const [latestCbResults] = await Promise.all([
+        restoreLatestCbResults(),
+        refreshSavedPolicies(),
+      ])
 
       if (latestCbResults) {
         setActiveProgramId(null)
@@ -450,11 +478,6 @@ function App() {
       const me = await api.me()
       setUser(me)
       const nextView = needsFollowupDiagnosis(response, me) ? 'followup' : authNextView
-      if (nextView === 'followup') {
-        sessionStorage.setItem(NEW_SIGNUP_FOLLOWUP_KEY, 'true')
-      } else {
-        sessionStorage.removeItem(NEW_SIGNUP_FOLLOWUP_KEY)
-      }
       navigate(nextView)
       setAuthNextView('programs')
     } catch (error) {
@@ -465,34 +488,43 @@ function App() {
   }
 
   const handleOpenProgram = async (programId) => {
+    if (openingProgramRef.current) return
+
     const alternativeProgram = alternativePrograms.find((program) => program.id === programId)
-    setActiveProgramId(programId)
-    setActiveAlternativeProgram(alternativeProgram || null)
-    navigate('detail')
+    openingProgramRef.current = true
+    setOpeningProgramId(programId)
+    setApiError('')
 
     try {
-      const detail = typeof programId === 'string'
-        ? await api.getCbInstitution(programId)
-        : normalizePolicy(await api.getPolicyDetail(programId))
+      let detail = detailCacheRef.current.get(programId)
+
+      if (!detail) {
+        detail = typeof programId === 'string'
+          ? await api.getCbInstitution(programId)
+          : normalizePolicy(await api.getPolicyDetail(programId))
+        detailCacheRef.current.set(programId, detail)
+      }
 
       setRecommendedPrograms((current) => withProgramDetail(current, programId, detail))
       setSavedPrograms((current) => withProgramDetail(current, programId, detail))
-      setActiveAlternativeProgram((current) => (
-        current?.id === programId ? { ...current, ...detail } : current
-      ))
+      setActiveProgramId(programId)
+      setActiveAlternativeProgram(alternativeProgram ? { ...alternativeProgram, ...detail } : null)
+      setShowProgramDetail(true)
     } catch (error) {
       if (error.status === 401) {
         handleAuthExpired()
         return
       }
       setApiError(error.message)
+    } finally {
+      openingProgramRef.current = false
+      setOpeningProgramId(null)
     }
   }
 
   const handleCbResultsReady = async (threadId, origin) => {
     localStorage.setItem(FOLLOWUP_COMPLETED_KEY, 'true')
     localStorage.removeItem(FOLLOWUP_PENDING_KEY)
-    sessionStorage.removeItem(NEW_SIGNUP_FOLLOWUP_KEY)
     setRecommendationsLoading(true)
     setRecommendedPrograms([])
 
@@ -513,6 +545,12 @@ function App() {
     } finally {
       setRecommendationsLoading(false)
     }
+  }
+
+  const handleCloseProgramDetail = () => {
+    setShowProgramDetail(false)
+    setActiveProgramId(null)
+    setActiveAlternativeProgram(null)
   }
 
   const handleRevisitNoChange = () => {
@@ -540,7 +578,6 @@ function App() {
   }
 
   const handleLogout = () => {
-    sessionStorage.removeItem(NEW_SIGNUP_FOLLOWUP_KEY)
     clearUserSession()
     navigate('onboarding')
   }
@@ -601,7 +638,6 @@ function App() {
       await api.withdraw()
       localStorage.removeItem(FOLLOWUP_PENDING_KEY)
       localStorage.removeItem(FOLLOWUP_COMPLETED_KEY)
-      sessionStorage.removeItem(NEW_SIGNUP_FOLLOWUP_KEY)
       setShowSignupExitModal(false)
       clearUserSession()
       navigate('onboarding')
@@ -630,6 +666,10 @@ function App() {
 
     if (view === 'analyzing') {
       return <AnalyzingPage complete={analyzingComplete} />
+    }
+
+    if (view === 'restoringSession') {
+      return <SessionRestorePage />
     }
 
     if (view === 'result') {
@@ -664,7 +704,7 @@ function App() {
           user={user}
           onAuthExpired={handleAuthExpired}
           onResultsReady={(threadId) => handleCbResultsReady(threadId, 'followup')}
-          onGoHome={isNewSignupFollowup() ? () => setShowSignupExitModal(true) : undefined}
+          onGoHome={user?.diagnosisCompleted === false ? () => setShowSignupExitModal(true) : undefined}
         />
       )
     }
@@ -711,18 +751,30 @@ function App() {
 
     if (view === 'programs') {
       return (
-        <ProgramListPage
-          programs={programs}
-          savedProgramIds={savedProgramIds}
-          user={user}
-          error={apiError}
-          splitRecommendations={Boolean(cbResults)}
-          recommendationsLoading={recommendationsLoading}
-          showSideChat={showSideChat}
-          onOpenChat={() => navigate('programChat')}
-          onOpenProgram={handleOpenProgram}
-          onSaveProgram={handleSaveProgram}
-        />
+        <>
+          <ProgramListPage
+            programs={programs}
+            savedProgramIds={savedProgramIds}
+            user={user}
+            error={apiError}
+            splitRecommendations={Boolean(cbResults)}
+            recommendationsLoading={recommendationsLoading}
+            showSideChat={showSideChat}
+            onOpenChat={() => navigate('programChat')}
+            onOpenProgram={handleOpenProgram}
+            openingProgramId={openingProgramId}
+            onSaveProgram={handleSaveProgram}
+          />
+          {showProgramDetail ? (
+            <ProgramDetailPage
+              program={activeProgram}
+              saved={savedProgramIds.includes(activeProgramId)}
+              user={user}
+              onBack={handleCloseProgramDetail}
+              onSaveProgram={handleSaveProgram}
+            />
+          ) : null}
+        </>
       )
     }
 
@@ -782,7 +834,9 @@ function App() {
       onNavigate={navigate}
       onLogout={handleLogout}
     >
-      {renderView()}
+      <Suspense fallback={null}>
+        {renderView()}
+      </Suspense>
       <Modal
         open={showInstallModal}
         title="마감일 알림은 CareOn 앱에서 받을 수 있어요"
