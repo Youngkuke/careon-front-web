@@ -11,6 +11,7 @@ export function ProgramListPage({
   recommendationsLoading,
   onOpenChat,
   onOpenProgram,
+  openingProgramId,
   onSaveProgram,
 }) {
   const savedPrograms = programs.filter((program) => savedProgramIds.includes(program.id))
@@ -45,7 +46,7 @@ export function ProgramListPage({
           {savedPrograms.length ? (
             <div className="program-list program-list--compact">
               {savedPrograms.map((program) => (
-                <ProgramCard key={program.id} program={program} saved onOpen={onOpenProgram} onSave={onSaveProgram} />
+                <ProgramCard key={program.id} program={program} saved onOpen={onOpenProgram} isOpening={openingProgramId === program.id} onSave={onSaveProgram} />
               ))}
             </div>
           ) : (
@@ -77,6 +78,7 @@ export function ProgramListPage({
                   program={program}
                   saved={savedProgramIds.includes(program.id)}
                   onOpen={onOpenProgram}
+                  isOpening={openingProgramId === program.id}
                   onSave={onSaveProgram}
                 />
               ))}
@@ -88,7 +90,6 @@ export function ProgramListPage({
           <section className="program-section program-section--maybe">
             <div className="program-section__heading">
               <h2>이런 제도들은 어떠세요?</h2>
-              <span>{maybePrograms.length}개 · 좌우로 넘겨보세요</span>
             </div>
             <div
               className="program-list program-list--horizontal"
@@ -102,6 +103,7 @@ export function ProgramListPage({
                   program={program}
                   saved={savedProgramIds.includes(program.id)}
                   onOpen={onOpenProgram}
+                  isOpening={openingProgramId === program.id}
                   onSave={onSaveProgram}
                 />
               ))}

@@ -2,6 +2,14 @@ import { useEffect, useRef, useState } from 'react'
 import { Button } from '../common/Button'
 import chatbotImg from '../../assets/chatbot.webp'
 
+function MessageText({ text }) {
+  return String(text).split(/(\[[^\]\r\n]+\])/g).map((part, index) => (
+    /^\[[^\]\r\n]+\]$/.test(part)
+      ? <strong key={index}>{part}</strong>
+      : part
+  ))
+}
+
 function TypingMessage({ text, onProgress }) {
   const [visibleText, setVisibleText] = useState('')
 
@@ -25,7 +33,7 @@ function TypingMessage({ text, onProgress }) {
     onProgress?.()
   }, [onProgress, visibleText])
 
-  return visibleText
+  return <MessageText text={visibleText} />
 }
 
 export function SideChatPanel({
@@ -136,7 +144,7 @@ export function SideChatPanel({
                   text={message.text}
                   onProgress={scrollMessagesToBottom}
                 />
-              ) : message.text}
+              ) : <MessageText text={message.text} />}
             </p>
           </div>
         ))}
