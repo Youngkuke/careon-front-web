@@ -217,7 +217,14 @@ function normalizeCbInstitution(item = {}) {
   const tags = firstDefined(item.tags, {})
   const support = firstDefined(item.support, {})
   const apply = firstDefined(item.apply, {})
-  const documents = firstDefined(item.required_forms, item.requiredForms, item.documents, [])
+  const requiredDocuments = firstDefined(
+    item.required_documents,
+    item.requiredDocuments,
+    item.required_documents_ai,
+    item.requiredDocumentsAi,
+    [],
+  )
+  const requiredForms = firstDefined(item.required_forms, item.requiredForms, [])
   const applyPeriodStart = firstDefined(item.apply_period_start, item.applyPeriodStart)
   const applyDeadline = firstDefined(item.apply_deadline, item.applyDeadline, item.application_deadline, item.applicationDeadline, item.deadline)
   const applicationPeriod = [
@@ -240,8 +247,11 @@ function normalizeCbInstitution(item = {}) {
     method: firstDefined(item.apply_method_nm, item.applyMethodNm, '공식 안내 확인'),
     resultTime: normalizeDateLabel(resultDate, '공식 안내 확인'),
     contact: firstDefined(item.contact, item.contact_info, item.contactInfo),
-    documents: normalizeDocuments(documents),
-    documentDetails: documents,
+    // Keep the legacy fields mapped to forms for callers that still consume them.
+    documents: normalizeDocuments(requiredForms),
+    documentDetails: requiredForms,
+    requiredDocuments: normalizeDocumentEntries(requiredDocuments),
+    requiredForms: normalizeDocumentEntries(requiredForms),
     documentGuide: '공식 안내에서 필요 서류를 확인해 주세요.',
     note: region.label ? `지원 지역: ${region.label}` : '세부 조건은 공식 안내를 확인해 주세요.',
     duplicateRule: '중복 지원 가능 여부는 담당 기관에 확인해 주세요.',
@@ -362,6 +372,20 @@ function normalizeDocuments(documents = []) {
       ? document
       : firstDefined(document.document_name, document.name, document.title)
   )).filter(Boolean)
+}
+
+function normalizeDocumentEntries(documents = []) {
+  return documents.map((document) => {
+    if (typeof document === 'string') {
+      return { name: document, url: null, urlType: null }
+    }
+
+    return {
+      name: firstDefined(document?.document_name, document?.name, document?.title, ''),
+      url: firstDefined(document?.url, document?.link, null),
+      urlType: firstDefined(document?.url_type, document?.urlType, null),
+    }
+  }).filter((document) => document.name)
 }
 
 function normalizePolicyId(value) {
