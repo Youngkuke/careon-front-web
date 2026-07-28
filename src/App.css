@@ -1567,7 +1567,7 @@ main {
 .selected-programs__chat-button {
   position: absolute;
   top: -2.375rem;
-  right: 0;
+  right: 10rem;
   z-index: 1;
   width: 4.75rem;
   height: 4.75rem;
@@ -2143,6 +2143,9 @@ main {
 .detail-panel-wrapper {
   position: relative;
   height: 100%;
+  border-radius: 1.5rem;
+  overflow: hidden;
+  isolation: isolate;
 }
 
 .program-detail-main .detail-panel,
