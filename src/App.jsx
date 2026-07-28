@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 import { REQUIRED_DIAGNOSIS_IDS } from './constants/diagnosisQuestions'
 import {
   api,
   clearAccessToken,
   getAccessToken,
-  normalizeMatchedPolicyGroups,
   normalizePolicy,
   setAccessToken,
 } from './lib/api'
@@ -27,6 +26,7 @@ import startLoadingImg from './assets/startloading.webp'
 
 const FOLLOWUP_PENDING_KEY = 'careon:followupPending'
 const FOLLOWUP_COMPLETED_KEY = 'careon:followupCompleted'
+const NEW_SIGNUP_FOLLOWUP_KEY = 'careon:newSignupFollowup'
 
 function AnalyzingPage({ complete }) {
   return (
@@ -53,16 +53,75 @@ const shouldShowFollowupFirst = () => (
   && localStorage.getItem(FOLLOWUP_COMPLETED_KEY) !== 'true'
 )
 
+const isNewSignupFollowup = () => (
+  sessionStorage.getItem(NEW_SIGNUP_FOLLOWUP_KEY) === 'true'
+)
+
 const needsFollowupDiagnosis = (loginResponse, me) => (
   loginResponse?.diagnosisCompleted === false
   || me?.diagnosisCompleted === false
   || shouldShowFollowupFirst()
 )
 
-const toApiPolicyId = (programId) => {
-  const policyId = Number(programId)
-  return Number.isSafeInteger(policyId) ? policyId : null
+const toApiPolicyReference = (programId) => {
+  return typeof programId === 'string' && programId ? programId : null
 }
+
+const flattenCbResults = (results) => {
+  if (!results) return []
+
+  const seenIds = new Set()
+
+  return [
+    { section: results.banner, recommendationSection: 'matched' },
+    { section: results.matched, recommendationSection: 'matched' },
+    { section: results.maybe, recommendationSection: 'maybe' },
+  ]
+    .flatMap(({ section, recommendationSection }) => (
+      (section?.institutions || []).map((program) => ({
+        ...program,
+        recommendationSection,
+      }))
+    ))
+    .filter((program) => {
+      if (!program.id || seenIds.has(program.id)) return false
+      seenIds.add(program.id)
+      return true
+    })
+}
+
+const mergePrograms = (...lists) => {
+  const programsById = new Map()
+
+  lists.flat().forEach((program) => {
+    if (!program?.id) return
+
+    const previous = programsById.get(program.id)
+    programsById.set(program.id, previous ? {
+      ...previous,
+      ...program,
+      source: previous.source || program.source,
+      savedPolicyId: program.savedPolicyId ?? previous.savedPolicyId,
+      matchedPolicyId: program.matchedPolicyId ?? previous.matchedPolicyId,
+      matchGroup: program.matchGroup ?? previous.matchGroup,
+      wasBenefited: program.wasBenefited ?? previous.wasBenefited,
+    } : program)
+  })
+
+  return [...programsById.values()]
+}
+
+const withProgramDetail = (programs, programId, detail) => programs.map((program) => (
+  program.id === programId ? {
+    ...program,
+    ...detail,
+    source: program.source || detail.source,
+    matchedPolicyId: detail.matchedPolicyId ?? program.matchedPolicyId,
+    matchGroup: detail.matchGroup ?? program.matchGroup,
+    wasBenefited: detail.wasBenefited ?? program.wasBenefited,
+    savedPolicyId: detail.savedPolicyId ?? program.savedPolicyId,
+  } : program
+))
 
 const isPasswordResetUrl = () => (
   window.location.pathname === '/reset-password'
@@ -81,14 +140,19 @@ function App() {
   const historyInitializedRef = useRef(false)
   const [answers, setAnswers] = useState({})
   const [user, setUser] = useState(null)
-  const [programs, setPrograms] = useState([])
+  const [recommendedPrograms, setRecommendedPrograms] = useState([])
+  const [savedPrograms, setSavedPrograms] = useState([])
   const [savedProgramIds, setSavedProgramIds] = useState([])
   const [savedPolicyIdByProgramId, setSavedPolicyIdByProgramId] = useState({})
   const [activeProgramId, setActiveProgramId] = useState(null)
+  const [activeAlternativeProgram, setActiveAlternativeProgram] = useState(null)
+  const [cbResults, setCbResults] = useState(null)
+  const [recommendationsLoading, setRecommendationsLoading] = useState(false)
   const [installPromptSkipCount, setInstallPromptSkipCount] = useState(0)
   const [installPromptInstalled, setInstallPromptInstalled] = useState(false)
   const [showInstallModal, setShowInstallModal] = useState(false)
   const [showRevisitModal, setShowRevisitModal] = useState(false)
+  const [showSignupExitModal, setShowSignupExitModal] = useState(false)
   const [showSideChat, setShowSideChat] = useState(true)
   const [authNextView, setAuthNextView] = useState('programs')
   const [analyzingNextView, setAnalyzingNextView] = useState('result')
@@ -123,13 +187,23 @@ function App() {
   }, [])
 
   const eligible = REQUIRED_DIAGNOSIS_IDS.every((id) => answers[id] === true)
-  const activeProgram = programs.find((program) => program.id === activeProgramId)
+  const programs = useMemo(
+    () => mergePrograms(recommendedPrograms, savedPrograms),
+    [recommendedPrograms, savedPrograms],
+  )
+  const activeProgram = programs.find((program) => program.id === activeProgramId) || activeAlternativeProgram
   const clearUserSession = useCallback(() => {
     clearAccessToken()
     setUser(null)
     setSavedProgramIds([])
     setSavedPolicyIdByProgramId({})
-    setPrograms([])
+    setRecommendedPrograms([])
+    setSavedPrograms([])
+    setActiveAlternativeProgram(null)
+    setCbResults(null)
+    setRecommendationsLoading(false)
+    setAlternativePrograms([])
+    setAlternativesError('')
   }, [])
 
   const handleAuthExpired = useCallback(() => {
@@ -138,65 +212,32 @@ function App() {
     setView('auth')
   }, [clearUserSession])
 
+  const restoreLatestCbResults = useCallback(async () => {
+    const latestThread = await api.getLatestCbThread()
+
+    if (!latestThread.threadId || latestThread.phase !== 'ready') {
+      return null
+    }
+
+    const results = await api.getCbResults(latestThread.threadId)
+
+    setCbResults(results)
+    setRecommendedPrograms(flattenCbResults(results))
+    return results
+  }, [])
+
   const refreshSavedPolicies = useCallback(async () => {
     const savedPolicies = await api.getSavedPolicies()
-    const normalized = savedPolicies.map(normalizePolicy)
+    const normalized = savedPolicies
+      .map(normalizePolicy)
+      .filter((program) => typeof program.servId === 'string' && program.servId)
 
     setSavedProgramIds(normalized.map((program) => program.id))
     setSavedPolicyIdByProgramId(Object.fromEntries(
       normalized.map((program) => [program.id, program.savedPolicyId]),
     ))
-    setPrograms((current) => {
-      const existingIds = new Set(current.map((program) => program.id))
-      return [...current, ...normalized.filter((program) => !existingIds.has(program.id))]
-    })
+    setSavedPrograms(normalized)
   }, [])
-
-  const refreshMatchedPolicies = useCallback(async () => {
-    const groups = await api.getMatchedPolicies()
-    const nextPrograms = normalizeMatchedPolicyGroups(groups)
-    setPrograms(nextPrograms.length ? nextPrograms : [])
-    return nextPrograms
-  }, [])
-
-  const refreshProgramData = useCallback(async () => {
-    await refreshMatchedPolicies()
-    await refreshSavedPolicies()
-  }, [refreshMatchedPolicies, refreshSavedPolicies])
-
-  useEffect(() => {
-    let ignore = false
-
-    if (!user || user.diagnosisCompleted !== true) {
-      return () => {
-        ignore = true
-      }
-    }
-
-    const loadPrograms = api.getMatchedPolicies()
-      .then((groups) => normalizeMatchedPolicyGroups(groups))
-
-    loadPrograms
-      .then((nextPrograms) => {
-        if (!ignore) {
-          setPrograms(nextPrograms.length ? nextPrograms : [])
-        }
-      })
-      .catch((error) => {
-        if (!ignore) {
-          if (error.status === 401) {
-            handleAuthExpired()
-          } else {
-            setPrograms([])
-            setApiError(error.message)
-          }
-        }
-      })
-
-    return () => {
-      ignore = true
-    }
-  }, [handleAuthExpired, user])
 
   const loadAlternativePrograms = useCallback(async () => {
     setAlternativesLoading(true)
@@ -222,9 +263,10 @@ function App() {
         setUser(me)
         setInstallPromptInstalled(me.appInstalled)
         setInstallPromptSkipCount(me.installPromptCount || 0)
+        const latestCbResults = await restoreLatestCbResults()
         await refreshSavedPolicies()
         if (!isPasswordResetUrl()) {
-          setView(me.diagnosisCompleted === false ? 'followup' : 'programs')
+          setView(latestCbResults ? 'programs' : (me.diagnosisCompleted === false ? 'followup' : 'programs'))
         }
       } catch {
         clearAccessToken()
@@ -232,7 +274,7 @@ function App() {
     }
 
     restoreSession()
-  }, [refreshSavedPolicies])
+  }, [refreshSavedPolicies, restoreLatestCbResults])
 
   useEffect(() => {
     if (view !== 'analyzing') return undefined
@@ -273,6 +315,7 @@ function App() {
 
     if (nextView === 'programs') {
       setActiveProgramId(null)
+      setActiveAlternativeProgram(null)
     }
     commitNavigation(nextView)
   }
@@ -289,8 +332,8 @@ function App() {
   const handleSaveProgram = async (programId) => {
     if (!user) return
 
-    const policyId = toApiPolicyId(programId)
-    if (policyId === null) {
+    const policyReference = toApiPolicyReference(programId)
+    if (policyReference === null) {
       setApiError('현재 표시된 제도는 저장할 수 없어요. 맞춤 제도를 다시 불러온 뒤 저장해 주세요.')
       return
     }
@@ -302,7 +345,7 @@ function App() {
       if (isAlreadySaved) {
         await api.cancelSavedPolicy(savedPolicyIdByProgramId[programId])
       } else {
-        await api.savePolicy(policyId)
+        await api.savePolicy(policyReference)
       }
 
       await refreshSavedPolicies()
@@ -357,12 +400,22 @@ function App() {
 
     try {
       const response = await api.login(form)
+      sessionStorage.removeItem(NEW_SIGNUP_FOLLOWUP_KEY)
       setAccessToken(response.accessToken)
       const me = await api.me()
       setUser(me)
       setInstallPromptInstalled(me.appInstalled)
       setInstallPromptSkipCount(me.installPromptCount || 0)
+      const latestCbResults = await restoreLatestCbResults()
       await refreshSavedPolicies()
+
+      if (latestCbResults) {
+        setActiveProgramId(null)
+        setView('programs')
+        setAuthNextView('programs')
+        return
+      }
+
       const nextView = needsFollowupDiagnosis(response, me) ? 'followup' : authNextView
       if (nextView === 'programs') {
         setShowRevisitModal(true)
@@ -396,7 +449,13 @@ function App() {
       setAccessToken(response.accessToken)
       const me = await api.me()
       setUser(me)
-      navigate(needsFollowupDiagnosis(response, me) ? 'followup' : authNextView)
+      const nextView = needsFollowupDiagnosis(response, me) ? 'followup' : authNextView
+      if (nextView === 'followup') {
+        sessionStorage.setItem(NEW_SIGNUP_FOLLOWUP_KEY, 'true')
+      } else {
+        sessionStorage.removeItem(NEW_SIGNUP_FOLLOWUP_KEY)
+      }
+      navigate(nextView)
       setAuthNextView('programs')
     } catch (error) {
       setApiError(error.message)
@@ -406,46 +465,54 @@ function App() {
   }
 
   const handleOpenProgram = async (programId) => {
+    const alternativeProgram = alternativePrograms.find((program) => program.id === programId)
     setActiveProgramId(programId)
+    setActiveAlternativeProgram(alternativeProgram || null)
     navigate('detail')
 
-    if (typeof programId !== 'number') return
-
     try {
-      const detail = normalizePolicy(await api.getPolicyDetail(programId))
-      setPrograms((current) => current.map((program) => (
-        program.id === programId ? {
-          ...program,
-          ...detail,
-          matchedPolicyId: detail.matchedPolicyId ?? program.matchedPolicyId,
-          matchGroup: detail.matchGroup ?? program.matchGroup,
-          wasBenefited: detail.wasBenefited ?? program.wasBenefited,
-          savedPolicyId: detail.savedPolicyId ?? program.savedPolicyId,
-        } : program
-      )))
-    } catch (error) {
-      setApiError(error.message)
-    }
-  }
+      const detail = typeof programId === 'string'
+        ? await api.getCbInstitution(programId)
+        : normalizePolicy(await api.getPolicyDetail(programId))
 
-  const handleStartFollowupAnalyzing = async () => {
-    try {
-      const me = await api.me()
-      setUser(me)
-      setInstallPromptInstalled(me.appInstalled)
-      setInstallPromptSkipCount(me.installPromptCount || 0)
+      setRecommendedPrograms((current) => withProgramDetail(current, programId, detail))
+      setSavedPrograms((current) => withProgramDetail(current, programId, detail))
+      setActiveAlternativeProgram((current) => (
+        current?.id === programId ? { ...current, ...detail } : current
+      ))
     } catch (error) {
       if (error.status === 401) {
         handleAuthExpired()
         return
       }
+      setApiError(error.message)
     }
+  }
 
+  const handleCbResultsReady = async (threadId, origin) => {
     localStorage.setItem(FOLLOWUP_COMPLETED_KEY, 'true')
     localStorage.removeItem(FOLLOWUP_PENDING_KEY)
-    setAnalyzingNextView('programs')
-    setAnalyzingComplete(false)
-    navigate('analyzing')
+    sessionStorage.removeItem(NEW_SIGNUP_FOLLOWUP_KEY)
+    setRecommendationsLoading(true)
+    setRecommendedPrograms([])
+
+    if (origin === 'followup') {
+      navigate('programs')
+    }
+
+    try {
+      const results = await api.getCbResults(threadId)
+      setCbResults(results)
+      setRecommendedPrograms(flattenCbResults(results))
+    } catch (error) {
+      if (error.status === 401) {
+        handleAuthExpired()
+        return
+      }
+      setApiError(error.message)
+    } finally {
+      setRecommendationsLoading(false)
+    }
   }
 
   const handleRevisitNoChange = () => {
@@ -455,6 +522,7 @@ function App() {
   const handleRevisitChanged = () => {
     localStorage.setItem(FOLLOWUP_PENDING_KEY, 'true')
     localStorage.removeItem(FOLLOWUP_COMPLETED_KEY)
+    setCbResults(null)
     setShowRevisitModal(false)
     navigate('followup')
   }
@@ -467,10 +535,12 @@ function App() {
     setAnswers({})
     localStorage.removeItem(FOLLOWUP_PENDING_KEY)
     localStorage.removeItem(FOLLOWUP_COMPLETED_KEY)
+    setCbResults(null)
     navigate('diagnosis')
   }
 
   const handleLogout = () => {
+    sessionStorage.removeItem(NEW_SIGNUP_FOLLOWUP_KEY)
     clearUserSession()
     navigate('onboarding')
   }
@@ -521,6 +591,27 @@ function App() {
     }
   }
 
+  const handleNewSignupExit = async () => {
+    if (apiLoading) return
+
+    setApiLoading(true)
+    setApiError('')
+
+    try {
+      await api.withdraw()
+      localStorage.removeItem(FOLLOWUP_PENDING_KEY)
+      localStorage.removeItem(FOLLOWUP_COMPLETED_KEY)
+      sessionStorage.removeItem(NEW_SIGNUP_FOLLOWUP_KEY)
+      setShowSignupExitModal(false)
+      clearUserSession()
+      navigate('onboarding')
+    } catch (error) {
+      setApiError(error.message || '회원가입 기록을 삭제하지 못했어요.')
+    } finally {
+      setApiLoading(false)
+    }
+  }
+
   const renderView = () => {
     if (view === 'diagnosis') {
       return (
@@ -549,7 +640,6 @@ function App() {
           alternativePrograms={alternativePrograms}
           alternativesLoading={alternativesLoading}
           alternativesError={alternativesError}
-          savedProgramIds={savedProgramIds}
           onLoadAlternatives={loadAlternativePrograms}
           onAuth={() => {
             localStorage.setItem(FOLLOWUP_PENDING_KEY, 'true')
@@ -563,7 +653,6 @@ function App() {
             setAuthNextView('followup')
             navigateWithClearedError('signup')
           }}
-          onOpenProgram={handleOpenProgram}
           onRestart={handleRestart}
         />
       )
@@ -574,7 +663,8 @@ function App() {
         <FollowupQuestionPage
           user={user}
           onAuthExpired={handleAuthExpired}
-          onComplete={handleStartFollowupAnalyzing}
+          onResultsReady={(threadId) => handleCbResultsReady(threadId, 'followup')}
+          onGoHome={isNewSignupFollowup() ? () => setShowSignupExitModal(true) : undefined}
         />
       )
     }
@@ -626,6 +716,8 @@ function App() {
           savedProgramIds={savedProgramIds}
           user={user}
           error={apiError}
+          splitRecommendations={Boolean(cbResults)}
+          recommendationsLoading={recommendationsLoading}
           showSideChat={showSideChat}
           onOpenChat={() => navigate('programChat')}
           onOpenProgram={handleOpenProgram}
@@ -639,7 +731,7 @@ function App() {
         <ProgramChatPage
           user={user}
           onAuthExpired={handleAuthExpired}
-          onMatchedPoliciesRefresh={refreshProgramData}
+          onResultsReady={(threadId) => handleCbResultsReady(threadId, 'programChat')}
           onBack={() => navigate('programs')}
         />
       )
@@ -720,6 +812,17 @@ function App() {
           바뀐 가족 구성, 돌봄 강도, 소득이나 거주지가 있다면<br />
           다시 여쭤보고 맞춤 제도를 새로 살펴볼게요.
         </p>
+      </Modal>
+      <Modal
+        open={showSignupExitModal}
+        title="회원가입 기록이 저장되지 않아요"
+        primaryLabel={apiLoading ? '삭제 중...' : '예'}
+        secondaryLabel="아니요"
+        className="save-cancel-modal"
+        onPrimary={handleNewSignupExit}
+        onSecondary={() => setShowSignupExitModal(false)}
+      >
+        <p>메인으로 이동하면 방금 회원가입한 기록이 삭제됩니다.</p>
       </Modal>
     </PageShell>
   )

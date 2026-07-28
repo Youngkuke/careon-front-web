@@ -10,21 +10,27 @@ const createInitialMessages = (userName) => [
   },
 ]
 
+const READY_TRANSITION_DELAY = 3000
+
+const waitForReadyTransition = () => new Promise((resolve) => {
+  window.setTimeout(resolve, READY_TRANSITION_DELAY)
+})
+
 export function ProgramChatPage({
   user,
   onAuthExpired,
-  onMatchedPoliciesRefresh,
+  onResultsReady,
   onBack,
 }) {
-  const [sessionId, setSessionId] = useState('')
+  const [threadId, setThreadId] = useState('')
   const [isSessionLoading, setIsSessionLoading] = useState(Boolean(user?.carerId))
   const [initialMessages, setInitialMessages] = useState(() => createInitialMessages(user?.name))
 
   useEffect(() => {
     let ignore = false
 
-    const createSession = async () => {
-      if (!user?.carerId) {
+    const createThread = async () => {
+      if (!user) {
         setIsSessionLoading(false)
         return
       }
@@ -32,14 +38,14 @@ export function ProgramChatPage({
       setIsSessionLoading(true)
 
       try {
-        const session = await api.createChatSession(user.carerId)
+        const thread = await api.createCbThread()
         if (ignore) return
 
-        setSessionId(session.sessionId)
-        if (session.message) {
+        setThreadId(thread.threadId)
+        if (thread.message) {
           setInitialMessages((current) => [
             ...current,
-            { from: 'bot', text: session.message },
+            { from: 'bot', text: thread.message },
           ])
         }
       } catch (error) {
@@ -61,39 +67,38 @@ export function ProgramChatPage({
       }
     }
 
-    createSession()
+    createThread()
 
     return () => {
       ignore = true
     }
-  }, [onAuthExpired, user?.carerId])
-
-  const refreshMatchedPolicies = async () => {
-    if (typeof onMatchedPoliciesRefresh !== 'function') return
-    await onMatchedPoliciesRefresh()
-  }
+  }, [onAuthExpired, user])
 
   const handleSubmitMessage = async (message) => {
-    if (!sessionId) {
+    if (!threadId) {
       return { message: '상담 세션을 준비하고 있어요. 잠시 후 다시 입력해 주세요.' }
     }
 
-    const response = await api.sendChatMessage(sessionId, message)
+    try {
+      const response = await api.sendCbMessage(threadId, message)
 
-    if (response.phase === 'ready_to_match') {
-      await api.matchChatSession(sessionId)
-      await refreshMatchedPolicies()
-      return {
-        ...response,
-        message: `${response.message || '상황을 반영했어요.'} 맞춤 제도를 새로 살펴봤어요.`,
+      if (response.phase === 'ready') {
+        await waitForReadyTransition()
+        await onResultsReady(threadId)
       }
-    }
 
-    if (response.phase === 'done') {
-      await refreshMatchedPolicies()
-    }
+      return response
+    } catch (error) {
+      if (error.status === 401) onAuthExpired()
 
-    return response
+      if (error.status === 404) {
+        const thread = await api.createCbThread()
+        setThreadId(thread.threadId)
+        return { message: '대화가 만료되어 새로 시작했어요. 다시 말씀해 주세요.' }
+      }
+
+      throw error
+    }
   }
 
   return (
