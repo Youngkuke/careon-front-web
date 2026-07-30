@@ -43,6 +43,8 @@ export function SideChatPanel({
   readOnly = false,
   animateBotMessages = false,
   isWaiting = false,
+  inputDisabled = false,
+  transitionCountdown = null,
   title = '',
   headerAction,
   initialMessages,
@@ -65,7 +67,7 @@ export function SideChatPanel({
       top: messagesRef.current.scrollHeight,
       behavior: 'smooth',
     })
-  }, [isWaiting, messages, sending])
+  }, [isWaiting, messages, sending, transitionCountdown])
 
   const scrollMessagesToBottom = () => {
     messagesRef.current?.scrollTo({
@@ -85,7 +87,7 @@ export function SideChatPanel({
   const handleSubmit = async (event) => {
     event.preventDefault()
     const question = draft.trim()
-    if (!question || sending || isWaiting) return
+    if (!question || sending || isWaiting || inputDisabled) return
 
     setDraft('')
     setMessages((current) => [
@@ -148,6 +150,15 @@ export function SideChatPanel({
             </p>
           </div>
         ))}
+        {transitionCountdown !== null ? (
+          <div className="side-chat__row side-chat__row--bot" role="status" aria-live="polite">
+            <img className="side-chat__avatar" src={chatbotImg} alt="" aria-hidden="true" />
+            <p className="side-chat__message side-chat__message--bot">
+              <strong>맞춤 제도를 불러오고 있어요.</strong><br />
+              {transitionCountdown}초 후 맞춤 제도 화면으로 이동해요.
+            </p>
+          </div>
+        ) : null}
         {sending || isWaiting ? (
           <div className="side-chat__row side-chat__row--bot side-chat__row--typing" role="status" aria-label="챗봇이 입력 중입니다">
             <img className="side-chat__avatar" src={chatbotImg} alt="" aria-hidden="true" />
@@ -177,9 +188,10 @@ export function SideChatPanel({
               onKeyDown={handleKeyDown}
               placeholder="예) 신청 서류를 쉽게 알려줘"
               rows={1}
+              disabled={isWaiting || inputDisabled}
             />
           </label>
-          <Button className="side-chat__send" type="submit" size="small" disabled={!draft.trim() || sending || isWaiting} aria-label="보내기">
+          <Button className="side-chat__send" type="submit" size="small" disabled={!draft.trim() || sending || isWaiting || inputDisabled} aria-label="보내기">
             ↑
           </Button>
         </form>

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { SEOUL_DISTRICTS } from '../constants/seoulDistricts'
 import { TextField } from '../components/common/TextField'
 import { Button } from '../components/common/Button'
+import { Modal } from '../components/common/Modal'
 
 const createProfileForm = (user) => ({
   name: user?.name || '',
@@ -12,10 +13,9 @@ const createProfileForm = (user) => ({
   confirmNewPassword: '',
 })
 
-export function MyPage({ user, error, onUpdateUser, onDeleteAccount, onLogin, onBack }) {
+export function MyPage({ user, onUpdateUser, onDeleteAccount, onLogin, onBack }) {
   const [form, setForm] = useState(() => createProfileForm(user))
-  const [formError, setFormError] = useState('')
-  const [successMessage, setSuccessMessage] = useState('')
+  const [saveResult, setSaveResult] = useState(null)
 
   if (!user) {
     return (
@@ -34,25 +34,37 @@ export function MyPage({ user, error, onUpdateUser, onDeleteAccount, onLogin, on
 
   const updateField = (field, value) => {
     setForm((current) => ({ ...current, [field]: value }))
-    setFormError('')
-    setSuccessMessage('')
   }
 
   const handleSubmit = async () => {
     if (!form.currentPassword) {
-      setFormError('정보를 저장하려면 현재 비밀번호를 입력해 주세요.')
+      setSaveResult({ type: 'error', message: '정보를 저장하려면 현재 비밀번호를 입력해 주세요.' })
       return
     }
 
     if (form.newPassword !== form.confirmNewPassword) {
-      setFormError('새 비밀번호가 일치하지 않아요.')
+      setSaveResult({ type: 'error', message: '새 비밀번호가 일치하지 않아요.' })
       return
     }
 
-    const updated = await onUpdateUser(form)
-    if (!updated) return
+    const changes = [
+      form.name !== user.name ? { label: '이름 또는 닉네임', before: user.name, after: form.name } : null,
+      form.district !== user.region ? { label: '거주 지역', before: user.region, after: form.district } : null,
+      form.newPassword ? { label: '비밀번호' } : null,
+    ].filter(Boolean)
 
-    setSuccessMessage('정보가 저장되었어요.')
+    if (!changes.length) {
+      setSaveResult({ type: 'error', message: '변경된 정보가 없어요. 수정할 항목을 확인해 주세요.' })
+      return
+    }
+
+    const result = await onUpdateUser(form)
+    if (!result?.success) {
+      setSaveResult({ type: 'error', message: result.message || '정보를 저장하지 못했어요.' })
+      return
+    }
+
+    setSaveResult({ type: 'success', changes })
     setForm((current) => ({
       ...current,
       currentPassword: '',
@@ -107,10 +119,31 @@ export function MyPage({ user, error, onUpdateUser, onDeleteAccount, onLogin, on
             <Button onClick={handleSubmit}>수정 저장</Button>
             <Button variant="danger" onClick={onDeleteAccount}>회원 탈퇴</Button>
           </div>
-          {formError || error ? <p className="form-error">{formError || error}</p> : null}
-          {successMessage ? <p className="form-success">{successMessage}</p> : null}
         </div>
       </div>
+      <Modal
+        open={Boolean(saveResult)}
+        title={saveResult?.type === 'success' ? '정보를 저장했어요' : '정보를 저장하지 못했어요'}
+        primaryLabel={saveResult?.type === 'success' ? '마이페이지에 남기' : '확인'}
+        secondaryLabel={saveResult?.type === 'success' ? '맞춤 제도 보러가기' : undefined}
+        className={`profile-save-result-modal profile-save-result-modal--${saveResult?.type || 'error'}`}
+        onPrimary={() => setSaveResult(null)}
+        onSecondary={saveResult?.type === 'success' ? onBack : undefined}
+      >
+        {saveResult?.type === 'success' ? (
+          <>
+            <p>다음 정보를 변경했어요.</p>
+            <ul className="profile-save-result__changes">
+              {saveResult.changes.map((change) => (
+                <li key={change.label}>
+                  <strong>{change.label}</strong>
+                  {change.before !== undefined ? <span>{change.before || '미입력'} → {change.after || '미입력'}</span> : null}
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : <p>{saveResult?.message}</p>}
+      </Modal>
     </section>
   )
 }

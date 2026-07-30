@@ -4,14 +4,13 @@ import { SideChatPanel } from '../components/layout/SideChatPanel'
 import { api } from '../lib/api'
 
 const READY_TRANSITION_DELAY = 3000
-
-const waitForReadyTransition = () => new Promise((resolve) => {
-  window.setTimeout(resolve, READY_TRANSITION_DELAY)
-})
+const READY_TRANSITION_SECONDS = READY_TRANSITION_DELAY / 1000
 
 export function FollowupQuestionPage({ user, onAuthExpired, onResultsReady, onGoHome }) {
   const [threadId, setThreadId] = useState('')
   const [isSessionLoading, setIsSessionLoading] = useState(Boolean(user?.carerId))
+  const [isReadyTransitioning, setIsReadyTransitioning] = useState(false)
+  const [readyTransitionSeconds, setReadyTransitionSeconds] = useState(null)
   const [initialMessages, setInitialMessages] = useState([])
 
   useEffect(() => {
@@ -62,6 +61,24 @@ export function FollowupQuestionPage({ user, onAuthExpired, onResultsReady, onGo
     }
   }, [onAuthExpired, user])
 
+  useEffect(() => {
+    if (!isReadyTransitioning) return undefined
+
+    setReadyTransitionSeconds(READY_TRANSITION_SECONDS)
+    const countdownTimer = window.setInterval(() => {
+      setReadyTransitionSeconds((current) => Math.max((current ?? 0) - 1, 0))
+    }, 1000)
+    const transitionTimer = window.setTimeout(() => {
+      window.clearInterval(countdownTimer)
+      void onResultsReady(threadId)
+    }, READY_TRANSITION_DELAY)
+
+    return () => {
+      window.clearInterval(countdownTimer)
+      window.clearTimeout(transitionTimer)
+    }
+  }, [isReadyTransitioning, onResultsReady, threadId])
+
   const handleSubmitMessage = async (message) => {
     if (!threadId) {
       return { message: '대화를 준비하고 있어요. 잠시 후 다시 입력해 주세요.' }
@@ -71,8 +88,7 @@ export function FollowupQuestionPage({ user, onAuthExpired, onResultsReady, onGo
       const response = await api.sendCbMessage(threadId, message)
 
       if (response.phase === 'ready') {
-        await waitForReadyTransition()
-        await onResultsReady(threadId)
+        setIsReadyTransitioning(true)
       }
 
       return response
@@ -101,6 +117,8 @@ export function FollowupQuestionPage({ user, onAuthExpired, onResultsReady, onGo
         className="side-chat--full"
         animateBotMessages
         isWaiting={isSessionLoading}
+        inputDisabled={isReadyTransitioning}
+        transitionCountdown={isReadyTransitioning ? readyTransitionSeconds : null}
         initialMessages={initialMessages}
         onSubmitMessage={handleSubmitMessage}
       />

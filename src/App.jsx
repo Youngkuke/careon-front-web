@@ -15,6 +15,8 @@ import startLoadingImg from './assets/startloading.webp'
 
 const FOLLOWUP_PENDING_KEY = 'careon:followupPending'
 const FOLLOWUP_COMPLETED_KEY = 'careon:followupCompleted'
+const MIN_ANALYZING_DURATION = 1500
+const ANALYZING_COMPLETE_EFFECT_DURATION = 650
 
 const AuthPage = lazy(() => import('./pages/AuthPage').then(({ AuthPage: Page }) => ({ default: Page })))
 const DiagnosisPage = lazy(() => import('./pages/DiagnosisPage').then(({ DiagnosisPage: Page }) => ({ default: Page })))
@@ -25,7 +27,8 @@ const PasswordResetPage = lazy(() => import('./pages/PasswordResetPage').then(({
 const ProgramChatPage = lazy(() => import('./pages/ProgramChatPage').then(({ ProgramChatPage: Page }) => ({ default: Page })))
 const ProgramDetailPage = lazy(() => import('./pages/ProgramDetailPage').then(({ ProgramDetailPage: Page }) => ({ default: Page })))
 const ProgramListPage = lazy(() => import('./pages/ProgramListPage').then(({ ProgramListPage: Page }) => ({ default: Page })))
-const ResultPage = lazy(() => import('./pages/ResultPage').then(({ ResultPage: Page }) => ({ default: Page })))
+const loadResultPage = () => import('./pages/ResultPage').then(({ ResultPage: Page }) => ({ default: Page }))
+const ResultPage = lazy(loadResultPage)
 const SignupPage = lazy(() => import('./pages/SignupPage').then(({ SignupPage: Page }) => ({ default: Page })))
 
 function AnalyzingPage({ complete }) {
@@ -138,6 +141,20 @@ const withProgramDetail = (programs, programId, detail) => programs.map((program
   } : program
 ))
 
+const waitForMinimumAnalyzingDuration = (startedAt) => {
+  const remaining = MIN_ANALYZING_DURATION - (performance.now() - startedAt)
+
+  if (remaining <= 0) return Promise.resolve()
+
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, remaining)
+  })
+}
+
+const wait = (duration) => new Promise((resolve) => {
+  window.setTimeout(resolve, duration)
+})
+
 const isPasswordResetUrl = () => (
   window.location.pathname === '/reset-password'
   || new URLSearchParams(window.location.search).has('token')
@@ -177,7 +194,7 @@ function App() {
   const [showSignupExitModal, setShowSignupExitModal] = useState(false)
   const [showSideChat, setShowSideChat] = useState(true)
   const [authNextView, setAuthNextView] = useState('programs')
-  const [analyzingNextView, setAnalyzingNextView] = useState('result')
+  const [showSkippedPrograms, setShowSkippedPrograms] = useState(false)
   const [analyzingComplete, setAnalyzingComplete] = useState(false)
   const [apiError, setApiError] = useState('')
   const [apiLoading, setApiLoading] = useState(false)
@@ -303,23 +320,6 @@ function App() {
     restoreSession()
   }, [refreshSavedPolicies, restoreLatestCbResults])
 
-  useEffect(() => {
-    if (view !== 'analyzing') return undefined
-
-    const completeTimer = window.setTimeout(() => {
-      setAnalyzingComplete(true)
-    }, 2000)
-
-    const timer = window.setTimeout(() => {
-      setView(analyzingNextView)
-    }, 3000)
-
-    return () => {
-      window.clearTimeout(completeTimer)
-      window.clearTimeout(timer)
-    }
-  }, [analyzingNextView, view])
-
   const navigate = (nextView) => {
     const commitNavigation = (targetView) => {
       window.history.pushState({ careonView: targetView }, '', window.location.href)
@@ -354,6 +354,36 @@ function App() {
 
   const handleAnswer = (questionId, value) => {
     setAnswers((current) => ({ ...current, [questionId]: value }))
+  }
+
+  const handleDiagnosisComplete = async () => {
+    setShowSkippedPrograms(false)
+
+    if (eligible) {
+      navigate('result')
+      return
+    }
+
+    const analyzingStartedAt = performance.now()
+    setAnalyzingComplete(false)
+    setView('analyzing')
+    await Promise.all([loadAlternativePrograms(), loadResultPage()])
+    await waitForMinimumAnalyzingDuration(analyzingStartedAt)
+    setAnalyzingComplete(true)
+    await wait(ANALYZING_COMPLETE_EFFECT_DURATION)
+    navigate('result')
+  }
+
+  const handleSkipResultSave = async () => {
+    setShowSkippedPrograms(true)
+    const analyzingStartedAt = performance.now()
+    setAnalyzingComplete(false)
+    setView('analyzing')
+    await Promise.all([loadAlternativePrograms(), loadResultPage()])
+    await waitForMinimumAnalyzingDuration(analyzingStartedAt)
+    setAnalyzingComplete(true)
+    await wait(ANALYZING_COMPLETE_EFFECT_DURATION)
+    navigate('result')
   }
 
   const handleSaveProgram = async (programId) => {
@@ -528,7 +558,7 @@ function App() {
     setRecommendationsLoading(true)
     setRecommendedPrograms([])
 
-    if (origin === 'followup') {
+    if (origin === 'followup' || origin === 'programChat') {
       navigate('programs')
     }
 
@@ -571,6 +601,7 @@ function App() {
 
   const handleRestart = () => {
     setAnswers({})
+    setShowSkippedPrograms(false)
     localStorage.removeItem(FOLLOWUP_PENDING_KEY)
     localStorage.removeItem(FOLLOWUP_COMPLETED_KEY)
     setCbResults(null)
@@ -591,8 +622,9 @@ function App() {
       })
       setAccessToken(verification.accessToken)
     } catch {
-      setApiError('현재 비밀번호가 일치하지 않아요.')
-      return false
+      const message = '현재 비밀번호가 일치하지 않아요.'
+      setApiError(message)
+      return { success: false, message }
     }
 
     try {
@@ -602,14 +634,14 @@ function App() {
         region: form.district,
       })
       setUser(await api.me())
-      return true
+      return { success: true }
     } catch (error) {
       if (error.status === 401) {
         handleAuthExpired()
       } else {
         setApiError(error.message)
       }
-      return false
+      return { success: false, message: error.message }
     }
   }
 
@@ -654,11 +686,7 @@ function App() {
         <DiagnosisPage
           answers={answers}
           onAnswer={handleAnswer}
-          onComplete={() => {
-            setAnalyzingNextView('result')
-            setAnalyzingComplete(false)
-            navigate('analyzing')
-          }}
+          onComplete={handleDiagnosisComplete}
           onBack={() => navigate('onboarding')}
         />
       )
@@ -680,7 +708,8 @@ function App() {
           alternativePrograms={alternativePrograms}
           alternativesLoading={alternativesLoading}
           alternativesError={alternativesError}
-          onLoadAlternatives={loadAlternativePrograms}
+          showSkippedPrograms={showSkippedPrograms}
+          onSkipResultSave={handleSkipResultSave}
           onAuth={() => {
             localStorage.setItem(FOLLOWUP_PENDING_KEY, 'true')
             localStorage.removeItem(FOLLOWUP_COMPLETED_KEY)
@@ -805,7 +834,6 @@ function App() {
       return (
         <MyPage
           user={user}
-          error={apiError}
           onUpdateUser={handleUpdateUser}
           onDeleteAccount={handleDeleteAccount}
           onLogin={() => navigateWithClearedError('auth')}
