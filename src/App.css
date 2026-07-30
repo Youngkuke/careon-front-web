@@ -2539,7 +2539,7 @@ main {
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 20;
+  z-index: 110;
   padding: 1.25rem;
   background: rgba(68, 68, 68, 0.35);
   display: flex;
@@ -2716,6 +2716,98 @@ main {
   background: #F6F6F6;
   color: #FF777B;
   border-color: rgba(255, 119, 123, 0.24);
+}
+
+.profile-save-result-modal {
+  width: min(32rem, 100%);
+  min-height: 0;
+  padding: 2.5rem;
+  border: 0.0625rem solid #E7EEEA;
+  border-radius: 1.5rem;
+  background: #ffffff;
+  box-shadow: 0 1.5rem 4.5rem rgba(24, 35, 31, 0.18);
+  gap: 1.25rem;
+}
+
+.profile-save-result-modal::before {
+  content: "✓";
+  align-self: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 50%;
+  background: rgba(11, 185, 133, 0.12);
+  color: var(--primary-dark);
+  display: grid;
+  place-items: center;
+  font-size: 2rem;
+  font-weight: 800;
+}
+
+.profile-save-result-modal--error::before {
+  content: "!";
+  background: rgba(255, 119, 123, 0.12);
+  color: #E25E63;
+}
+
+.profile-save-result-modal h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: 1.625rem;
+  line-height: 1.35;
+}
+
+.profile-save-result-modal .modal__body {
+  display: grid;
+  gap: 0.875rem;
+  color: #575757;
+  line-height: 1.55;
+}
+
+.profile-save-result-modal .modal__body > p {
+  margin: 0;
+}
+
+.profile-save-result__changes {
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.625rem;
+  list-style: none;
+  text-align: left;
+}
+
+.profile-save-result__changes li {
+  padding: 0.875rem 1rem;
+  border: 0.0625rem solid #E7EEEA;
+  border-radius: 0.875rem;
+  background: #F8FCFA;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.profile-save-result__changes strong {
+  color: var(--text);
+}
+
+.profile-save-result__changes span {
+  color: #575757;
+  text-align: right;
+}
+
+.profile-save-result-modal .modal__actions {
+  width: 100%;
+  margin-top: 0.375rem;
+}
+
+.profile-save-result-modal .modal__button-row .button {
+  flex: 1 1 0;
+}
+
+.profile-save-result-modal .button--ghost {
+  background: #F6F8F7;
+  color: #575757;
+  border-color: #E7EEEA;
 }
 
 @media (max-width: 61.25rem) {
