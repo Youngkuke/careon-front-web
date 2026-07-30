@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { DIAGNOSIS_QUESTIONS } from '../constants/diagnosisQuestions'
 import { Button } from '../components/common/Button'
 import { ChatBubble } from '../components/diagnosis/ChatBubble'
@@ -33,11 +33,11 @@ export function ResultPage({
   alternativePrograms,
   alternativesLoading,
   alternativesError,
-  onLoadAlternatives,
+  showSkippedPrograms,
+  onSkipResultSave,
   onAuth,
   onSignup,
 }) {
-  const [showSkippedPrograms, setShowSkippedPrograms] = useState(false)
   const logRef = useRef(null)
   const failedQuestions = DIAGNOSIS_QUESTIONS.filter((question) => answers[question.id] === false)
   const ineligibleMessage = failedQuestions.length > 1
@@ -51,16 +51,6 @@ export function ResultPage({
       behavior: 'smooth',
     })
   }, [showSkippedPrograms])
-
-  useEffect(() => {
-    if (eligible || !showAlternativeCards) return
-    onLoadAlternatives()
-  }, [eligible, onLoadAlternatives, showAlternativeCards])
-
-  useEffect(() => {
-    if (!showSkippedPrograms) return
-    onLoadAlternatives()
-  }, [onLoadAlternatives, showSkippedPrograms])
 
   const renderAlternativeState = () => {
     if (alternativesLoading) {
@@ -100,7 +90,7 @@ export function ResultPage({
                     <Button className="auth-choice-primary" size="large" onClick={onSignup}>회원가입</Button>
                     <Button className="auth-choice-secondary" variant="ghost" size="large" onClick={onAuth}>로그인</Button>
                   </div>
-                  <button className="later-link" type="button" onClick={() => setShowSkippedPrograms(true)}>
+                  <button className="later-link" type="button" onClick={onSkipResultSave}>
                     나중에 할게요 (결과가 저장되지 않아요)
                   </button>
                 </div>
