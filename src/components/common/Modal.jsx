@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import { Button } from './Button'
 
 export function Modal({
@@ -14,7 +15,7 @@ export function Modal({
 }) {
   if (!open) return null
 
-  return (
+  const modal = (
     <div className="modal-backdrop" role="presentation">
       <section className={`modal ${className}`} role="dialog" aria-modal="true" aria-labelledby="modal-title">
         <h2 id="modal-title">{title}</h2>
@@ -37,4 +38,9 @@ export function Modal({
       </section>
     </div>
   )
+
+  // Detail panels isolate their own stacking context so their scrollable
+  // contents can be layered safely. Render confirmation dialogs at the
+  // document root to keep them above adjacent panels and their overflow.
+  return createPortal(modal, document.body)
 }
