@@ -5,9 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && vite build --ssr src/entry-public.jsx --outDir dist-ssr && node scripts/prerender.mjs",
     "lint": "eslint .",
     "test": "node --test",
+    "test:seo": "node --test scripts/verify-seo.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

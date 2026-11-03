@@ -6,6 +6,33 @@ CareON Web은 단순히 제도 목록을 보여주는 데서 끝나지 않습니
 
 > 이 저장소는 프런트엔드 애플리케이션만 포함합니다. 로그인, 추천 결과, 제도 저장, AI 상담 등의 전체 기능을 사용하려면 Web API와 AI API 서버가 필요합니다.
 
+## 주소별 온보딩 문구와 SEO
+
+`https://careon.site`의 기존 첫 화면 디자인을 유지합니다. `/`에서는 원래 문구를 사용하고, 주제별 주소 10개에서는 메인 문구와 보조 문구만 바뀝니다. 가이드·메뉴·카드·푸터를 추가하지 않습니다.
+
+| 경로 | 주제 | 검색 노출 |
+| --- | --- | --- |
+| `/` | 원래 가족돌봄청년 메인 | 대상 |
+| `/money` | 지원금·복지 혜택 | 대상 |
+| `/care` | 가족 돌봄·간병·가사 | 대상 |
+| `/medical` | 의료비·병원비 | 대상 |
+| `/housing` | 주거비·월세 | 대상 |
+| `/living` | 생활비·생계 | 대상 |
+| `/mind` | 심리상담·마음 건강 | 대상 |
+| `/young-carer` | 영케어러 | 대상 |
+| `/eligibility` | 지원 대상·조건 | 대상 |
+| `/apply` | 신청 방법 | 대상 |
+| `/documents` | 신청 서류 | 대상 |
+| `/start` | 사전 진단으로 바로 진입 | 제외 |
+| `/login` | 로그인으로 바로 진입 | 제외 |
+| `/reset-password` | 비밀번호 재설정 | 제외 |
+
+모든 공개 화면의 시작하기는 `/start`, 로그인은 `/login`으로 연결합니다. 저장된 로그인 세션이 있으면 기존 앱의 세션 복원 흐름을 사용합니다. 주제별로 진단 답변이나 추천 필터를 미리 정하지 않습니다.
+
+공개 URL별 고유 제목·설명·canonical·OG 정보와 정적 HTML을 만들고 사이트맵·robots.txt를 자동 생성합니다. 내부 개인 화면은 기존 상태 기반 이동을 유지합니다.
+
+로컬 문서: [문서 목록](docs/README.md), [SEO 변경 전후 기록](docs/seo-improvements.md), [배포·운영 안내](docs/seo-deployment.md). `docs/`는 현재 Git 제외 대상이므로 새 클론에는 포함되지 않습니다.
+
 ## 주요 사용자 흐름
 
 ```mermaid
@@ -102,25 +129,27 @@ flowchart LR
 | 구분 | 기술 | 사용 목적 |
 | --- | --- | --- |
 | UI | React 19 | 함수형 컴포넌트와 Hooks 기반 화면 구성 |
-| 빌드 도구 | Vite 8 | 개발 서버, HMR, 프로덕션 번들 생성 |
+| 빌드 도구 | Vite 8 | 개발 서버, HMR, 브라우저·공개 페이지 서버 렌더링 빌드 |
 | 언어 | JavaScript, JSX | 애플리케이션과 UI 로직 구현 |
 | 스타일 | CSS | 디자인 토큰, 반응형 레이아웃, 애니메이션 구현 |
 | 통신 | Fetch API | Web API와 AI API 호출 |
 | 상태 관리 | React Hooks | 화면, 사용자, 추천, 저장 목록, 모달 상태 관리 |
-| 내비게이션 | History API | 별도 라우터 없이 화면 상태와 뒤로가기 처리 |
-| 테스트 | Node.js Test Runner | 신청 서류 분류 및 공식 URL 정책 검증 |
+| 내비게이션 | URL 링크 + History API | 공개 페이지 주소와 개인 앱 화면 상태·뒤로가기 처리 |
+| 테스트 | Node.js Test Runner | 서류 안내·SEO 정책·정적 HTML 검증 |
 | 정적 분석 | ESLint 10 | JavaScript, React Hooks, Fast Refresh 규칙 검사 |
-| 배포 설정 | Vercel Rewrites | SPA 경로를 `index.html`로 연결 |
+| 배포 설정 | Vercel cleanUrls·Headers | 정적 HTML 경로, 404, 검색 제외 응답 헤더 |
 
 Redux, React Router, Axios, CSS 프레임워크는 사용하지 않습니다. 공통 상태와 화면 전환은 `App.jsx`, HTTP 통신과 응답 변환은 `src/lib/api.js`에 집중되어 있습니다.
 
 ## 구현 구조
 
-### 화면 상태 기반 SPA
+### 온보딩 문구별 공개 URL과 화면 상태 기반 개인 앱
+
+`src/main.jsx`와 `RootApp.jsx`가 URL에 따라 공개 페이지와 개인 앱을 나눕니다. 공개 온보딩은 `PublicApp.jsx`와 기존 `OnboardingPage.jsx`로 렌더링하고 빌드 시 생성된 HTML을 hydrate합니다. 개인 진입 경로에서만 기존 `App.jsx`를 지연 로딩합니다.
 
 `App.jsx`가 애플리케이션의 오케스트레이터 역할을 합니다. 현재 화면을 나타내는 `view` 상태에 따라 온보딩, 진단, 결과, 인증, 상담, 추천, 상세, 마이페이지를 렌더링합니다.
 
-일반 화면 전환은 URL별 라우트가 아니라 `window.history.pushState()`로 히스토리를 쌓고 `popstate` 이벤트로 뒤로가기를 처리합니다. 비밀번호 재설정만 메일 링크 진입이 필요하므로 URL 경로와 쿼리 토큰을 별도로 해석합니다.
+개인 앱 내부의 일반 화면 전환은 URL별 라우트가 아니라 `window.history.pushState()`로 히스토리를 쌓고 `popstate` 이벤트로 뒤로가기를 처리합니다. `/login`은 로그인 화면으로, 비밀번호 재설정은 경로와 쿼리 토큰을 해석해 진입합니다. 각 공개 URL의 시작하기·로그인은 주소가 있는 링크를 사용합니다.
 
 각 페이지는 `React.lazy()`와 `Suspense`로 지연 로딩합니다. 진단 결과 분석 중에는 대체 제도 요청과 결과 페이지 번들 로딩을 병렬로 처리하고, 최소 1.5초의 분석 상태와 완료 전환 효과를 거쳐 결과를 표시합니다.
 
@@ -204,6 +233,8 @@ API에서 받은 제도는 대략 다음 화면 모델로 변환됩니다.
 
 ```text
 careon-front-web/
+├── docs/                       # 로컬 참고 문서·SEO 변경 기록 (Git 제외)
+├── scripts/                    # 공개 HTML 생성·SEO 검사·로컬 경로 처리
 ├── public/
 │   └── favicon.svg
 ├── src/
@@ -223,13 +254,17 @@ careon-front-web/
 │   ├── lib/
 │   │   └── api.js              # API 호출, 오류 처리, 응답 정규화
 │   ├── pages/                   # 기능별 페이지 컴포넌트
+│   ├── public/                  # 기존 온보딩을 재사용하는 공개 URL 화면
+│   ├── seo/                     # 공개 콘텐츠·메타 정보·SEO 정책 검사
+│   ├── RootApp.jsx              # 공개 페이지와 개인 앱 분기
+│   ├── entry-public.jsx         # 빌드 시 서버 렌더링 진입점
 │   ├── App.jsx                 # 화면 전환과 전역 수준 상태 조정
 │   ├── App.css                 # 서비스 UI와 반응형 스타일
 │   ├── index.css               # 전역 토큰과 기본 스타일
 │   └── main.jsx                # React 진입점
 ├── eslint.config.js
-├── vite.config.js              # React 플러그인과 개발 프록시
-├── vercel.json                 # SPA rewrite
+├── vite.config.js              # React·공개 URL 플러그인과 개발 프록시
+├── vercel.json                 # clean URL·404·검색 제외 헤더
 └── package.json
 ```
 
@@ -290,27 +325,31 @@ npm run build
 npm run preview
 ```
 
-빌드 결과는 `dist/`에 생성됩니다.
+빌드 결과는 `dist/`에 생성됩니다. 브라우저 번들 생성 후 공개 React 화면을 정적 HTML로 만들고, 개인 진입 HTML·404·robots.txt·사이트맵을 생성합니다. 임시 `dist-ssr/`는 생성 완료 후 제거합니다.
 
 ## 사용 가능한 명령어
 
 | 명령어 | 설명 |
 | --- | --- |
 | `npm run dev` | Vite 개발 서버와 HMR 실행 |
-| `npm run build` | 프로덕션 번들 생성 |
+| `npm run build` | 프로덕션 번들·공개 HTML·사이트맵 생성 |
 | `npm run preview` | 생성된 번들을 로컬에서 미리보기 |
 | `npm run lint` | 전체 JavaScript와 JSX 정적 분석 |
 | `npm test` | Node.js Test Runner로 테스트 실행 |
+| `npm run test:seo` | 빌드 후 실제 HTML·메타 정보·링크·사이트맵 검증 |
 
 ## 테스트
 
-현재 자동화 테스트는 신청 서류 안내의 정확성과 외부 링크 안전 정책에 집중되어 있습니다.
+자동화 테스트는 신청 서류 안내의 정확성, 외부 링크 안전 정책, 공개·개인 URL 구분과 SEO 빌드 산출물을 확인합니다.
 
 - 의료급여증, 입양사실확인서 등 특수 서류의 발급처 확인
 - 신청서·동의서·참고 자료 분류 우선순위 확인
 - 서류 별칭과 공식 증명서 연결 확인
 - 검증된 공공기관 도메인만 외부 링크로 노출하는지 확인
 - API가 전달한 비공식 URL이 공식 발급 링크를 덮어쓰지 않는지 확인
+- 공개 페이지별 고유 제목·설명·canonical과 실제 본문 HTML 확인
+- 개인 진입·재설정 토큰 URL의 검색 제외 정책 확인
+- 빌드된 HTML의 내부 링크·이미지·사이트맵 공개 URL 확인
 
 변경 사항을 제출하기 전 다음 명령을 차례로 실행하는 것을 권장합니다.
 
@@ -318,13 +357,16 @@ npm run preview
 npm test
 npm run lint
 npm run build
+npm run test:seo
 ```
 
 ## 배포
 
-`vercel.json`은 모든 요청을 `/index.html`로 다시 작성하여 새로고침이나 비밀번호 재설정 링크로 직접 접근해도 SPA가 실행되도록 설정합니다.
+`vercel.json`은 `dist/`의 정적 HTML을 확장자 없는 주소로 제공합니다. 전체 SPA rewrite는 제거했으며, 없는 주소에는 실제 404 응답과 `404.html`을 제공합니다. 개인 앱 진입 URL과 토큰 쿼리 요청은 검색 제외 헤더를 적용합니다. 대표 도메인 `careon.site` 외의 배포 호스트에도 검색 제외 헤더를 적용합니다.
 
-Vercel에 배포할 때는 프로젝트 환경 변수에 `VITE_API_BASE_URL`과 `VITE_AI_API_BASE_URL`을 등록한 뒤 다시 빌드해야 합니다. 운영 인프라가 같은 도메인의 `/api`를 백엔드로 먼저 전달하도록 구성된 경우에만 환경 변수를 생략하고 상대 경로 방식을 사용할 수 있습니다. 현재의 전체 경로 SPA rewrite보다 API 라우팅이 우선하는지도 함께 확인해야 합니다.
+Vercel에 배포할 때는 프로젝트 환경 변수에 `VITE_API_BASE_URL`과 `VITE_AI_API_BASE_URL`을 등록한 뒤 다시 빌드해야 합니다. 운영 인프라가 같은 도메인의 `/api`를 백엔드로 전달하도록 별도로 구성된 경우에만 환경 변수를 생략하고 상대 경로 방식을 사용할 수 있습니다. 이 정적 배포 설정 자체는 API 서버나 API 프록시를 제공하지 않습니다.
+
+도메인 DNS 연결, HTTPS, Google Search Console·네이버 서치어드바이저 소유권 확인과 사이트맵 제출은 운영 계정에서 별도로 진행해야 합니다. 실제 운영 응답·색인 상태는 배포 후 확인합니다.
 
 ## 개발 시 참고 사항
 
