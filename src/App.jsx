@@ -1,6 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 import { REQUIRED_DIAGNOSIS_IDS } from './constants/diagnosisQuestions'
+import { getAppEntryView } from './seo/site'
 import {
   api,
   clearAccessToken,
@@ -156,21 +157,22 @@ const wait = (duration) => new Promise((resolve) => {
 })
 
 const isPasswordResetUrl = () => (
-  window.location.pathname === '/reset-password'
+  window.location.pathname.replace(/\/+$/, '') === '/reset-password'
   || new URLSearchParams(window.location.search).has('token')
   || new URLSearchParams(window.location.search).has('resetToken')
 )
 
 const clearPasswordResetUrl = () => {
   if (isPasswordResetUrl()) {
-    window.history.replaceState(null, '', '/')
+    window.history.replaceState(null, '', '/start')
   }
 }
 
 function App() {
   const [view, setView] = useState(() => {
     if (isPasswordResetUrl()) return 'passwordReset'
-    return getAccessToken() ? 'restoringSession' : 'onboarding'
+    if (getAccessToken()) return 'restoringSession'
+    return getAppEntryView(window.location.pathname, window.location.search)
   })
   const historyInitializedRef = useRef(false)
   const detailCacheRef = useRef(new Map())
@@ -204,7 +206,7 @@ function App() {
 
   useEffect(() => {
     if (!historyInitializedRef.current) {
-      const initialView = isPasswordResetUrl() ? 'passwordReset' : 'onboarding'
+      const initialView = getAppEntryView(window.location.pathname, window.location.search)
       window.history.replaceState({ careonView: initialView, careonRoot: true }, '', window.location.href)
       window.history.pushState({ careonView: initialView }, '', window.location.href)
       historyInitializedRef.current = true
@@ -313,7 +315,7 @@ function App() {
         }
       } catch {
         clearAccessToken()
-        if (!isPasswordResetUrl()) setView('onboarding')
+        if (!isPasswordResetUrl()) setView(getAppEntryView(window.location.pathname, window.location.search))
       }
     }
 
