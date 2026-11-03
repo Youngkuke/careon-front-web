@@ -38,3 +38,7 @@ api_chat.md
 api_new_chat.md
 api_fix_chat.md
 document-guide-inventory.md
+
+# Local reference documents (preserve their previous ignored status)
+/docs/reference/
+/docs/
